@@ -14,10 +14,10 @@ namespace VinhKhanhTour.Services
 
         private CancellationTokenSource? _ttsCts;
 
-        public async Task PlayPoiNarrationAsync(Poi poi)
+        public async Task PlayPoiNarrationAsync(Poi poi, bool isManual = false)
         {
-            // Logic chống spam đọc đè liên tục
-            if (poi.Id == _lastPlayedPoiId && DateTime.Now - _lastPlayedTime < _cooldown)
+            // Logic chống spam đọc đè liên tục (bỏ qua nếu là click thủ công)
+            if (!isManual && poi.Id == _lastPlayedPoiId && DateTime.Now - _lastPlayedTime < _cooldown)
             {
                 Debug.WriteLine($"[NarrationEngine] Đang trong thời gian Cooldown. Bỏ qua: {poi.Name}");
                 return;
@@ -41,10 +41,78 @@ namespace VinhKhanhTour.Services
                     Volume = 1.0f // Âm lượng
                 };
 
-                // Yêu cầu đồ án 3: TTS Đa ngôn ngữ, Dung lượng nhẹ
-                await TextToSpeech.Default.SpeakAsync(poi.TtsScript, options, cancelToken: _ttsCts.Token);
+                // Cấu hình ngôn ngữ TTS
+                var currentCode = Services.LocalizationResourceManager.Instance.CurrentLanguageCode;
+                var locales = await TextToSpeech.Default.GetLocalesAsync();
+                var localesList = locales?.ToList() ?? new List<Locale>();
                 
-                Debug.WriteLine($"[NarrationEngine] Đã đọc xong kịch bản: {poi.Name}");
+                // IN RA CONSOLE TẤT CẢ GIỌNG ĐỌC MÀ HỆ ĐIỀU HÀNH HIỆN CÓ
+                Debug.WriteLine($"[NarrationEngine] Đang tìm kiếm giọng đọc cho mã: '{currentCode}'...");
+                Debug.WriteLine($"[NarrationEngine] --- DANH SÁCH GIỌNG ĐỌC CỦA MÁY ({localesList.Count}) ---");
+                foreach (var loc in localesList)
+                {
+                    Debug.WriteLine($"   Id: {loc.Id} | Lang: {loc.Language} | Name: {loc.Name}");
+                }
+                Debug.WriteLine($"[NarrationEngine] ---------------------------------------------");
+
+                // Sử dụng CultureInfo để tự động lấy mã 2 chữ, 3 chữ và tên tiếng Anh
+                System.Globalization.CultureInfo cultureInfo;
+                try
+                {
+                    cultureInfo = new System.Globalization.CultureInfo(currentCode);
+                }
+                catch
+                {
+                    cultureInfo = new System.Globalization.CultureInfo("en");
+                }
+
+                var twoLetter = cultureInfo.TwoLetterISOLanguageName;       // VD: "vi"
+                var threeLetter = cultureInfo.ThreeLetterISOLanguageName;   // VD: "vie"
+                var englishName = cultureInfo.EnglishName;                  // VD: "Vietnamese"
+                int spaceIndex = englishName.IndexOf(' ');
+                var searchName = spaceIndex > 0 ? englishName.Substring(0, spaceIndex) : englishName;
+
+                // TÌM KIẾM THUẬT TOÁN THÁC NƯỚC (CASCADING) CẢI TIẾN (Đúng chuẩn, không thả lỏng để tránh lỗi nhận nhầm tiếng Anh)
+                // 1. Khớp mã 2 chữ ("vi", "es") hoặc mã 3 chữ ("vie", "spa")
+                var selectedLocale = localesList.FirstOrDefault(l => 
+                    l.Language != null && (
+                        l.Language.Equals(twoLetter, StringComparison.OrdinalIgnoreCase) ||
+                        l.Language.Equals(threeLetter, StringComparison.OrdinalIgnoreCase)
+                    ));
+
+                // 2. Khớp chuỗi bắt đầu mã Language hợp lệ (VD: "vi-VN", "es-ES", "zh-CN")
+                selectedLocale ??= localesList.FirstOrDefault(l => 
+                    l.Language != null && (
+                        l.Language.StartsWith(twoLetter + "-", StringComparison.OrdinalIgnoreCase) || 
+                        l.Language.StartsWith(twoLetter + "_", StringComparison.OrdinalIgnoreCase) ||
+                        l.Language.StartsWith(threeLetter + "-", StringComparison.OrdinalIgnoreCase) ||
+                        l.Language.StartsWith(threeLetter + "_", StringComparison.OrdinalIgnoreCase)
+                    )
+                );
+
+                // 3. Khớp tên tiếng Anh (VD: "Vietnamese", "Spanish", "Japanese")
+                selectedLocale ??= localesList.FirstOrDefault(l => 
+                    l.Name != null && l.Name.Contains(searchName, StringComparison.OrdinalIgnoreCase)
+                );
+
+                if (selectedLocale != null)
+                {
+                    options.Locale = selectedLocale;
+                }
+
+                // Yêu cầu đồ án 3: TTS Đa ngôn ngữ, Dung lượng nhẹ
+                if (options.Locale != null)
+                {
+                    Debug.WriteLine($"[NarrationEngine] Phát bằng ngôn ngữ: {options.Locale.Language} - {options.Locale.Name}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[NarrationEngine] Không tìm thấy locale phù hợp cho '{currentCode}', dùng mặc định.");
+                }
+
+                await TextToSpeech.Default.SpeakAsync(poi.DisplayTtsScript, options, cancelToken: _ttsCts.Token);
+                
+                Debug.WriteLine($"[NarrationEngine] Đã đọc xong kịch bản ({currentCode}): {poi.Name}");
             }
             catch (TaskCanceledException)
             {

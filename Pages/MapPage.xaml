@@ -2,7 +2,8 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="VinhKhanhTour.Pages.MapPage"
-             Title="Bản Đồ Phố Vĩnh Khánh"
+             xmlns:local="clr-namespace:VinhKhanhTour.MarkupExtensions"
+             Title="{local:Translate 'Bản Đồ Phố Vĩnh Khánh'}"
              Shell.NavBarIsVisible="False">
 
     <Grid x:Name="MapContainer">
@@ -26,7 +27,7 @@
                         StrokeThickness="0"
                         VerticalOptions="Center" />
                 <Label x:Name="DebugLabel" 
-                       Text="Đang tìm kiếm vệ tinh GPS..." 
+                       Text="{local:Translate 'Đang tìm kiếm vệ tinh GPS...'}" 
                        FontSize="13" 
                        FontAttributes="Bold" 
                        VerticalOptions="Center" />
@@ -76,8 +77,8 @@
             <Grid RowDefinitions="Auto, Auto" ColumnDefinitions="*, Auto" Padding="20,16">
                 <!-- POI Info & Distance -->
                 <VerticalStackLayout Grid.Column="0" Spacing="4">
-                    <Label Text="BẠN ĐANG Ở GẦN" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource Primary}" CharacterSpacing="1" />
-                    <Label x:Name="PoiNameLabel" Text="Chọn một điểm trên map" FontSize="18" FontAttributes="Bold" MaxLines="1"/>
+                    <Label Text="{local:Translate 'BẠN ĐANG Ở GẦN'}" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource Primary}" CharacterSpacing="1" />
+                    <Label x:Name="PoiNameLabel" Text="{local:Translate 'Chọn một điểm trên map'}" FontSize="18" FontAttributes="Bold" MaxLines="1"/>
                     <Label x:Name="DistanceLabel" Text="Khoảng cách: -- m" FontSize="13" Opacity="0.6"/>
                 </VerticalStackLayout>
 

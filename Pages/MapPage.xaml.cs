@@ -235,7 +235,7 @@ namespace VinhKhanhTour.Pages
             Poi? nearestTriggeredPoi = null;
             double minDistance = double.MaxValue;
             double nearestDistance = double.MaxValue;
-            string closestPoiName = "Chưa tìm thấy quán ốc";
+            string closestPoiName = Services.LocalizationResourceManager.Instance["Chưa tìm thấy quán ốc"];
 
             foreach (var poi in pois)
             {
@@ -264,7 +264,7 @@ namespace VinhKhanhTour.Pages
             MainThread.BeginInvokeOnMainThread(() => 
             {
                 DebugLabel.Text = $"GPS: {_currentUserLocation.Latitude:F5}, {_currentUserLocation.Longitude:F5}";
-                DistanceLabel.Text = $"Cách quán gần nhất: {nearestDistance:F0}m";
+                DistanceLabel.Text = $"{Services.LocalizationResourceManager.Instance["Cách quán gần nhất"]}: {nearestDistance:F0}m";
                 
                 if (nearestTriggeredPoi != null)
                 {
@@ -321,8 +321,8 @@ namespace VinhKhanhTour.Pages
             {
                 var pin = new Pin
                 {
-                    Label = poi.Name,
-                    Address = $"Bán kính: {poi.Radius}m",
+                    Label = poi.DisplayName,
+                    Address = $"{Services.LocalizationResourceManager.Instance["Bán kính"]}: {poi.Radius}m",
                     Type = PinType.Place,
                     Location = new Location(poi.Latitude, poi.Longitude)
                 };

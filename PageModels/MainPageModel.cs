@@ -9,6 +9,7 @@ namespace VinhKhanhTour.PageModels
     {
         private readonly PoiRepository _poiRepository;
         private readonly Services.IErrorHandler _errorHandler;
+        private readonly Services.NarrationEngine _narrationEngine;
         private List<Poi> _allPois = [];
         private bool _isDataLoaded = false;
 
@@ -24,10 +25,16 @@ namespace VinhKhanhTour.PageModels
         [ObservableProperty]
         private bool _isRefreshing;
 
-        public MainPageModel(PoiRepository poiRepository, Services.IErrorHandler errorHandler)
+        public MainPageModel(PoiRepository poiRepository, Services.IErrorHandler errorHandler, Services.NarrationEngine narrationEngine)
         {
             _poiRepository = poiRepository;
             _errorHandler = errorHandler;
+            _narrationEngine = narrationEngine;
+
+            Services.LocalizationResourceManager.Instance.PropertyChanged += (s, e) => 
+            {
+                ApplyFilters(); // Refresh currently displayed items
+            };
         }
 
         private async Task LoadDataAsync()
@@ -69,22 +76,31 @@ namespace VinhKhanhTour.PageModels
 
             if (!string.IsNullOrWhiteSpace(SearchText))
             {
-                filtered = filtered.Where(p => p.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || 
-                                               p.Description.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+                filtered = filtered.Where(p => p.DisplayName.Contains(SearchText, StringComparison.OrdinalIgnoreCase) || 
+                                               p.DisplayDescription.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
             }
 
-            if (category != "Tất cả")
+            if (category != "Tất cả" && category != "All")
             {
                 // In a real app, POI would have a Category property. 
                 // For this demo, we'll simulate it by checking keywords in description.
-                if (category == "Ốc & Hải sản")
-                    filtered = filtered.Where(p => p.Name.Contains("Ốc") || p.Description.Contains("Ốc") || p.Description.Contains("Hải sản"));
-                else if (category == "Đồ nướng")
-                    filtered = filtered.Where(p => p.Description.Contains("nướng"));
-                else if (category == "Món nước")
-                    filtered = filtered.Where(p => p.Description.Contains("bún") || p.Description.Contains("lẩu"));
+                if (category == "Ốc & Hải sản" || category == "Snails & Seafood")
+                    filtered = filtered.Where(p => p.DisplayName.Contains("Ốc", StringComparison.OrdinalIgnoreCase) || 
+                                                   p.DisplayDescription.Contains("Ốc", StringComparison.OrdinalIgnoreCase) || 
+                                                   p.DisplayDescription.Contains("Hải sản", StringComparison.OrdinalIgnoreCase) ||
+                                                   p.DisplayName.Contains("Snail", StringComparison.OrdinalIgnoreCase) ||
+                                                   p.DisplayDescription.Contains("Seafood", StringComparison.OrdinalIgnoreCase));
+                else if (category == "Đồ nướng" || category == "BBQ")
+                    filtered = filtered.Where(p => p.DisplayDescription.Contains("nướng", StringComparison.OrdinalIgnoreCase) || 
+                                                   p.DisplayDescription.Contains("grilled", StringComparison.OrdinalIgnoreCase) ||
+                                                   p.DisplayDescription.Contains("BBQ", StringComparison.OrdinalIgnoreCase));
+                else if (category == "Món nước" || category == "Noodle/Broth")
+                    filtered = filtered.Where(p => p.DisplayDescription.Contains("bún", StringComparison.OrdinalIgnoreCase) || 
+                                                   p.DisplayDescription.Contains("lẩu", StringComparison.OrdinalIgnoreCase) ||
+                                                   p.DisplayDescription.Contains("noodle", StringComparison.OrdinalIgnoreCase) ||
+                                                   p.DisplayDescription.Contains("hotpot", StringComparison.OrdinalIgnoreCase));
                 else if (category == "Sushi")
-                    filtered = filtered.Where(p => p.Name.Contains("Sushi"));
+                    filtered = filtered.Where(p => p.DisplayName.Contains("Sushi", StringComparison.OrdinalIgnoreCase));
             }
 
             Pois = filtered.ToList();
@@ -120,12 +136,44 @@ namespace VinhKhanhTour.PageModels
             await Shell.Current.GoToAsync("//map");
         }
 
+        [ObservableProperty]
+        private Poi? _selectedPoi;
+
+        [ObservableProperty]
+        private bool _isPoiDetailVisible;
+
         [RelayCommand]
-        private async Task GoToPoiAsync(Poi poi)
+        private void GoToPoi(Poi poi)
         {
             if (poi != null)
             {
-                await Shell.Current.GoToAsync($"//map?poiId={poi.Id}");
+                SelectedPoi = poi;
+                IsPoiDetailVisible = true;
+            }
+        }
+
+        [RelayCommand]
+        private void ClosePoiDetail()
+        {
+            IsPoiDetailVisible = false;
+        }
+
+        [RelayCommand]
+        private async Task NavigateToMapAsync()
+        {
+            if (SelectedPoi != null)
+            {
+                IsPoiDetailVisible = false;
+                await Shell.Current.GoToAsync($"//map?poiId={SelectedPoi.Id}");
+            }
+        }
+
+        [RelayCommand]
+        private async Task PlayNarrationAsync()
+        {
+            if (SelectedPoi != null)
+            {
+                await _narrationEngine.PlayPoiNarrationAsync(SelectedPoi, isManual: true);
             }
         }
     }
