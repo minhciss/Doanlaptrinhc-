@@ -1,0 +1,65 @@
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+    x:Class="VinhKhanhapp.Pages.MapPage"
+    Title="Bản đồ Vĩnh Khánh">
+
+    <Grid>
+
+        <!-- Bản đồ -->
+        <maps:Map
+            x:Name="MainMap"
+            MapType="Street"
+            IsShowingUser="True"/>
+
+        <!-- Zoom controls -->
+        <VerticalStackLayout
+            HorizontalOptions="End"
+            VerticalOptions="Center"
+            Margin="15"
+            Spacing="10">
+
+            <Button
+                Text="+"
+                WidthRequest="50"
+                HeightRequest="50"
+                CornerRadius="25"
+                Clicked="ZoomIn_Clicked"/>
+
+            <Button
+                Text="-"
+                WidthRequest="50"
+                HeightRequest="50"
+                CornerRadius="25"
+                Clicked="ZoomOut_Clicked"/>
+
+        </VerticalStackLayout>
+
+        <!-- Current location -->
+        <Button
+            Text="📍"
+            WidthRequest="55"
+            HeightRequest="55"
+            CornerRadius="28"
+            HorizontalOptions="End"
+            VerticalOptions="End"
+            Margin="20"
+            Clicked="Locate_Clicked"/>
+
+        <!-- Bottom navigation -->
+        <Grid
+            BackgroundColor="White"
+            HeightRequest="70"
+            VerticalOptions="End"
+            ColumnDefinitions="*,*,*">
+
+            <Button Text="Map"/>
+            <Button Text="POI" Grid.Column="1"/>
+            <Button Text="Guide" Grid.Column="2"/>
+
+        </Grid>
+
+    </Grid>
+
+</ContentPage>

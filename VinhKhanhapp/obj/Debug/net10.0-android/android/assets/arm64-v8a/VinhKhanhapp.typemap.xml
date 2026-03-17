@@ -1,0 +1,14 @@
+<api type="debug" assembly-name="VinhKhanhapp" mvid="c80f5fcb139047279358c07706069177">
+  <java-to-managed>
+    <entry java-name="crc64717b62784b61ffd0/MainActivity" managed-name="VinhKhanhapp.MainActivity, VinhKhanhapp" managed-type-token-id="33554456" />
+    <entry java-name="crc64717b62784b61ffd0/MainApplication" managed-name="VinhKhanhapp.MainApplication, VinhKhanhapp" managed-type-token-id="33554457" />
+    <entry java-name="crc641f799327681f112d/AudioService_TextToSpeechInitListener" managed-name="VinhKhanhapp.Services.AudioService+TextToSpeechInitListener, VinhKhanhapp" managed-type-token-id="33554574" />
+    <entry java-name="crc641f799327681f112d/AudioService_UtteranceListener" managed-name="VinhKhanhapp.Services.AudioService+UtteranceListener, VinhKhanhapp" managed-type-token-id="33554575" />
+  </java-to-managed>
+  <managed-to-java>
+    <entry java-name="crc64717b62784b61ffd0/MainActivity" managed-name="VinhKhanhapp.MainActivity, VinhKhanhapp" managed-type-token-id="33554456" />
+    <entry java-name="crc64717b62784b61ffd0/MainApplication" managed-name="VinhKhanhapp.MainApplication, VinhKhanhapp" managed-type-token-id="33554457" />
+    <entry java-name="crc641f799327681f112d/AudioService_TextToSpeechInitListener" managed-name="VinhKhanhapp.Services.AudioService+TextToSpeechInitListener, VinhKhanhapp" managed-type-token-id="33554574" />
+    <entry java-name="crc641f799327681f112d/AudioService_UtteranceListener" managed-name="VinhKhanhapp.Services.AudioService+UtteranceListener, VinhKhanhapp" managed-type-token-id="33554575" />
+  </managed-to-java>
+</api>
