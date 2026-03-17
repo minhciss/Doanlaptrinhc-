@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+             xmlns:pageModels="clr-namespace:VinhKhanhapp.PageModels"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="VinhKhanhapp.Pages.MapPage"
+             x:DataType="pageModels:MapPageModel"
+             Title="Phố ẩm thực Vĩnh Khánh">
+
+    <ContentPage.Behaviors>
+        <toolkit:EventToCommandBehavior EventName="Appearing"
+                                        Command="{Binding InitializeAsyncCommand}" />
+    </ContentPage.Behaviors>
+
+    <Grid>
+        <maps:Map x:Name="MainMap"
+                  IsShowingUser="True"
+                  MapType="Street"
+                  VerticalOptions="Fill"
+                  HorizontalOptions="Fill" />
+
+        <Grid HeightRequest="56" BackgroundColor="#6C4DF6" VerticalOptions="Start">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ImageButton Source="{StaticResource IconMenu}" BackgroundColor="Transparent" HeightRequest="40" WidthRequest="40" Margin="8" />
+            <Label Grid.Column="1" Text="Phố ẩm thực Vĩnh Khánh" TextColor="White" FontAttributes="Bold" VerticalOptions="Center" HorizontalOptions="Center" />
+            <ImageButton Grid.Column="2" Source="{StaticResource IconLocate}" BackgroundColor="Transparent" HeightRequest="40" WidthRequest="40" Margin="8" Command="{Binding RefreshLocationAsyncCommand}" />
+        </Grid>
+
+        <Border StrokeShape="RoundRectangle 12" BackgroundColor="White" Padding="12" HorizontalOptions="Center" VerticalOptions="Start" Margin="16,66,16,0">
+            <Grid ColumnDefinitions="Auto,*">
+                <Label Text="📍" FontSize="18" VerticalOptions="Center" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2" Padding="8,0,0,0">
+                    <Label Text="Vị trí của bạn" FontAttributes="Bold" />
+                    <Label Text="{Binding CurrentLocationText}" TextColor="Gray" FontSize="13" />
+                </VerticalStackLayout>
+                <Button Grid.Column="2" Text="🔄" Command="{Binding RefreshLocationAsyncCommand}" BackgroundColor="#E8EAF6" CornerRadius="20" HeightRequest="36" WidthRequest="36" HorizontalOptions="End" VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+        <Border BackgroundColor="White" StrokeShape="RoundRectangle 16" Padding="12" HorizontalOptions="Fill" VerticalOptions="End" Margin="12" HeightRequest="140">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <StackLayout Orientation="Vertical">
+                    <Label Text="{Binding NearestPoiTitle}" FontAttributes="Bold" FontSize="16" />
+                    <Label Text="{Binding NearestPoiDescription}" TextColor="Gray" MaxLines="2" />
+                </StackLayout>
+
+                <VerticalStackLayout Grid.Column="1" HorizontalOptions="End" VerticalOptions="Center" Spacing="8">
+                    <Button Text="Nghe thuyết minh" BackgroundColor="#6C4DF6" TextColor="White" CornerRadius="20" WidthRequest="140" Command="{Binding PlayNearestPoiAsyncCommand}" IsEnabled="{Binding HasNearestPoi}"/>
+                    <Button Text="Chi tiết" BackgroundColor="#F1F1F1" TextColor="#333" CornerRadius="16" WidthRequest="140" />
+                </VerticalStackLayout>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentPage>
+

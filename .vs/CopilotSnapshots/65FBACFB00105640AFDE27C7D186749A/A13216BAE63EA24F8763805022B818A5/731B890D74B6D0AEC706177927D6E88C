@@ -1,0 +1,115 @@
+﻿using CommunityToolkit.Maui.Alerts;
+using CommunityToolkit.Maui.Core;
+using Microsoft.Maui.Devices;
+using VinhKhanhapp.Models;
+
+namespace VinhKhanhapp.Services;
+
+public interface IAudioService
+{
+    Task PlayPoiAsync(Poi poi, string language, CancellationToken cancellationToken = default);
+}
+
+public interface IPoiRepository
+{
+    Task<IReadOnlyList<Poi>> GetPoisAsync(CancellationToken cancellationToken = default);
+    Task<Poi?> GetPoiByCodeAsync(string code, CancellationToken cancellationToken = default);
+}
+
+public interface IAnalyticsService
+{
+    Task LogPoiPlayedAsync(Poi poi, string language, TimeSpan duration, CancellationToken cancellationToken = default);
+}
+
+public class AudioService : IAudioService
+{
+    public async Task PlayPoiAsync(Poi poi, string language, CancellationToken cancellationToken = default)
+    {
+        // Demo đơn giản: dùng TextToSpeech đọc mô tả tiếng Việt/Anh
+        var translation = poi.Translations.FirstOrDefault(t => t.Language == language)
+                          ?? poi.Translations.FirstOrDefault();
+        if (translation == null)
+            return;
+
+        var text = translation.TtsScript ?? translation.Description;
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        await TextToSpeech.Default.SpeakAsync(text, null, cancellationToken);
+    }
+}
+
+public class MockPoiRepository : IPoiRepository
+{
+    readonly IReadOnlyList<Poi> _pois;
+
+    public MockPoiRepository()
+    {
+        // Dữ liệu mẫu cho phố ẩm thực Vĩnh Khánh
+        _pois = new List<Poi>
+        {
+            new()
+            {
+                Id = "pho-am-thuc-1",
+                Code = "POI001",
+                Lat = 10.7555,
+                Lng = 106.6880,
+                RadiusMeters = 60,
+                Priority = 2,
+                MapLink = "https://maps.google.com",
+                Translations =
+                {
+                    new PoiTranslation
+                    {
+                        Language = "vi",
+                        Title = "Cổng vào phố ẩm thực Vĩnh Khánh",
+                        Description = "Bạn đang đứng tại cổng vào phố ẩm thực Vĩnh Khánh, nơi tập trung hàng chục quán ăn nổi tiếng với hải sản và các món nướng...",
+                        TtsScript = "Xin chào bạn đến với phố ẩm thực Vĩnh Khánh. Tại đây, bạn có thể thưởng thức rất nhiều món ăn đường phố đặc sắc của Sài Gòn..."
+                    },
+                    new PoiTranslation
+                    {
+                        Language = "en",
+                        Title = "Vinh Khanh Food Street Gate",
+                        Description = "You are now at the main gate of Vinh Khanh Food Street, a famous spot for seafood and grilled dishes in Ho Chi Minh City..."
+                    }
+                }
+            },
+            new()
+            {
+                Id = "quan-hai-san-1",
+                Code = "POI002",
+                Lat = 10.7559,
+                Lng = 106.6885,
+                RadiusMeters = 40,
+                Priority = 1,
+                Translations =
+                {
+                    new PoiTranslation
+                    {
+                        Language = "vi",
+                        Title = "Quán hải sản nướng",
+                        Description = "Quán hải sản nướng nổi tiếng với các món sò, ốc, tôm nướng mỡ hành...",
+                    }
+                }
+            }
+        };
+    }
+
+    public Task<IReadOnlyList<Poi>> GetPoisAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(_pois);
+
+    public Task<Poi?> GetPoiByCodeAsync(string code, CancellationToken cancellationToken = default)
+        => Task.FromResult(_pois.FirstOrDefault(p => string.Equals(p.Code, code, StringComparison.OrdinalIgnoreCase)));
+}
+
+public class AnalyticsService : IAnalyticsService
+{
+    public Task LogPoiPlayedAsync(Poi poi, string language, TimeSpan duration, CancellationToken cancellationToken = default)
+    {
+        // Demo: chỉ hiển thị toast, thực tế sẽ gửi lên server hoặc lưu SQLite
+        var message = $"Đã nghe: {poi.Translations.FirstOrDefault(t => t.Language == language)?.Title ?? poi.Id} ({duration.TotalSeconds:F0}s)";
+        var toast = Toast.Make(message, ToastDuration.Short);
+        return toast.Show(cancellationToken);
+    }
+}
+

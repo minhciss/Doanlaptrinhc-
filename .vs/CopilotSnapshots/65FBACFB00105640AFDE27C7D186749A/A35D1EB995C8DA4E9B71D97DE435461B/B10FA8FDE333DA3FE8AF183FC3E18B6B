@@ -1,0 +1,187 @@
+﻿using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices.Sensors;
+using VinhKhanhapp.Models;
+using VinhKhanhapp.Services;
+
+namespace VinhKhanhapp.PageModels;
+
+public partial class MapPageModel : ObservableObject
+{
+    readonly ILocationService _locationService;
+    readonly IGeofenceService _geofenceService;
+    readonly IAudioService _audioService;
+    readonly IPoiRepository _poiRepository;
+    readonly IAnalyticsService _analyticsService;
+
+    // Force the app to use a fixed location (Vĩnh Khánh) instead of device GPS.
+    // Set _forceFixedLocation = true to always center map on the fixed coordinates.
+    readonly bool _forceFixedLocation = true;
+    readonly Location _fixedLocation = new Location(9.9311, 105.7833); // change to exact Vĩnh Khánh coords if needed
+
+    [ObservableProperty]
+    bool isBusy;
+
+    [ObservableProperty]
+    Location? currentLocation;
+
+    [ObservableProperty]
+    Poi? nearestPoi;
+
+    [ObservableProperty]
+    string statusMessage = string.Empty;
+
+    public ObservableCollection<Poi> Pois { get; } = new();
+
+    public string CurrentLocationText =>
+        CurrentLocation == null
+            ? "Chưa có vị trí"
+            : $"Lat {CurrentLocation.Latitude:F5}, Lng {CurrentLocation.Longitude:F5}";
+
+    public bool HasNearestPoi => NearestPoi != null;
+
+    public string NearestPoiTitle =>
+        NearestPoi?.Translations.FirstOrDefault(t => t.Language == "vi")?.Title
+        ?? NearestPoi?.Translations.FirstOrDefault()?.Title
+        ?? string.Empty;
+
+    public string NearestPoiDescription =>
+        NearestPoi?.Translations.FirstOrDefault(t => t.Language == "vi")?.Description
+        ?? NearestPoi?.Translations.FirstOrDefault()?.Description
+        ?? string.Empty;
+
+    public MapPageModel(
+        ILocationService locationService,
+        IGeofenceService geofenceService,
+        IAudioService audioService,
+        IPoiRepository poiRepository,
+        IAnalyticsService analyticsService)
+    {
+        _locationService = locationService;
+        _geofenceService = geofenceService;
+        _audioService = audioService;
+        _poiRepository = poiRepository;
+        _analyticsService = analyticsService;
+    }
+
+    partial void OnCurrentLocationChanged(Location? value)
+    {
+        OnPropertyChanged(nameof(CurrentLocationText));
+    }
+
+    partial void OnNearestPoiChanged(Poi? value)
+    {
+        OnPropertyChanged(nameof(HasNearestPoi));
+        OnPropertyChanged(nameof(NearestPoiTitle));
+        OnPropertyChanged(nameof(NearestPoiDescription));
+    }
+
+    [RelayCommand]
+    public async Task InitializeAsync()
+    {
+        if (IsBusy)
+            return;
+
+        try
+        {
+            IsBusy = true;
+
+            var pois = await _poiRepository.GetPoisAsync();
+            Pois.Clear();
+            foreach (var poi in pois)
+                Pois.Add(poi);
+
+            _geofenceService.SetPois(Pois);
+
+            await TryUpdateLocationAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    public async Task RefreshLocationAsync()
+    {
+        await TryUpdateLocationAsync();
+    }
+
+    async Task TryUpdateLocationAsync()
+    {
+        try
+        {
+            StatusMessage = string.Empty;
+            if (_forceFixedLocation)
+            {
+                CurrentLocation = _fixedLocation;
+                StatusMessage = "Đang sử dụng vị trí cố định: Vĩnh Khánh (chỉ thử nghiệm).";
+                CheckGeofence(CurrentLocation);
+                return;
+            }
+
+            var location = await _locationService.GetCurrentLocationAsync();
+            if (location == null)
+            {
+                StatusMessage = "Không lấy được vị trí. Trên Emulator hãy mở Extended controls → Location → Send tọa độ.";
+                return;
+            }
+
+            CurrentLocation = location;
+            CheckGeofence(location);
+        }
+        catch (PermissionException)
+        {
+            StatusMessage = "Bạn chưa cấp quyền vị trí. Hãy Allow khi được hỏi hoặc vào Settings cấp quyền Location.";
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+                if (page != null)
+                    await page.DisplayAlertAsync("Cần quyền vị trí", StatusMessage, "OK");
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    public async Task PlayNearestPoiAsync()
+    {
+        if (NearestPoi == null)
+            return;
+
+        var start = DateTime.UtcNow;
+        await _audioService.PlayPoiAsync(NearestPoi, "vi");
+        var duration = DateTime.UtcNow - start;
+        await _analyticsService.LogPoiPlayedAsync(NearestPoi, "vi", duration);
+    }
+
+    [RelayCommand]
+    public async Task HandleQrAsync(string code)
+    {
+        var poi = await _poiRepository.GetPoiByCodeAsync(code);
+        if (poi == null)
+            return;
+
+        NearestPoi = poi;
+        var start = DateTime.UtcNow;
+        await _audioService.PlayPoiAsync(poi, "vi");
+        var duration = DateTime.UtcNow - start;
+        await _analyticsService.LogPoiPlayedAsync(poi, "vi", duration);
+    }
+
+    void CheckGeofence(Location location)
+    {
+        var result = _geofenceService.OnLocationUpdated(location, DateTime.UtcNow);
+        if (result?.Poi == null)
+            return;
+
+        NearestPoi = result.Poi;
+        _ = PlayNearestPoiAsync();
+    }
+}
+

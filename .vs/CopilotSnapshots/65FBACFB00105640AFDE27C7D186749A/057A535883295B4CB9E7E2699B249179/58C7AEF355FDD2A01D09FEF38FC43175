@@ -1,0 +1,382 @@
+﻿using Android.Media;
+using CommunityToolkit.Maui.Alerts;
+using CommunityToolkit.Maui.Core;
+using VinhKhanhapp.Models;
+using System.Threading.Tasks;
+
+namespace VinhKhanhapp.Services;
+
+public interface IAudioService
+{
+    Task PlayPoiAsync(Poi poi, string language, CancellationToken cancellationToken = default);
+}
+
+public interface IPoiRepository
+{
+    Task<IReadOnlyList<Poi>> GetPoisAsync(CancellationToken cancellationToken = default);
+    Task<Poi?> GetPoiByCodeAsync(string code, CancellationToken cancellationToken = default);
+}
+
+public interface IAnalyticsService
+{
+    Task LogPoiPlayedAsync(Poi poi, string language, TimeSpan duration, CancellationToken cancellationToken = default);
+}
+
+public class AudioService : IAudioService
+{
+    MediaPlayer? player;
+
+    class TextToSpeechInitListener : Java.Lang.Object, Android.Speech.Tts.TextToSpeech.IOnInitListener
+    {
+        readonly TaskCompletionSource<bool> _tcs;
+        public TextToSpeechInitListener(TaskCompletionSource<bool> tcs) => _tcs = tcs;
+        public void OnInit([GeneratedEnum] Android.Speech.Tts.Result status) => _tcs.TrySetResult(status == Android.Speech.Tts.Result.Success);
+    }
+
+    class UtteranceListener : Android.Speech.Tts.UtteranceProgressListener
+    {
+        readonly TaskCompletionSource<bool> _tcs;
+        public UtteranceListener(TaskCompletionSource<bool> tcs) => _tcs = tcs;
+        public override void OnDone(string utteranceId) => _tcs.TrySetResult(true);
+        public override void OnError(string utteranceId) => _tcs.TrySetResult(false);
+        public override void OnStart(string utteranceId) { }
+    }
+
+    public async Task PlayPoiAsync(Poi poi, string language, CancellationToken cancellationToken = default)
+    {
+        PoiTranslation? translation = poi.Translations
+            .FirstOrDefault(t => t.Language == language)
+            ?? poi.Translations.FirstOrDefault();
+
+        if (translation == null)
+            return;
+
+        Console.WriteLine("Audio file: " + translation.AudioFile);
+
+            // If there is an audio file reference, try to play it. If file missing or invalid, try to generate TTS file.
+            if (!string.IsNullOrWhiteSpace(translation.AudioFile))
+            {
+                try
+                {
+                    // If packaged file exists, try to play; if not, try to generate a TTS mp3 file.
+                    var exists = await TryPlayPackagedAudioAsync(translation.AudioFile);
+                    if (exists)
+                        return;
+                }
+                catch { }
+            }
+
+            // If we reach here, either there was no audio file or it failed — generate a TTS audio file (Android) or fallback to TTS speak.
+            var text = translation.TtsScript ?? translation.Description;
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+
+            var generated = await GenerateTtsAudioFileAsync(poi, translation.Language ?? language, text);
+            if (!string.IsNullOrWhiteSpace(generated))
+            {
+                await PlayAudio(generated);
+                return;
+            }
+
+        // Nếu không có audio → dùng TextToSpeech
+        var text = translation.TtsScript ?? translation.Description;
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            await TextToSpeech.Default.SpeakAsync(text, null, cancellationToken);
+        }
+
+    async Task<bool> TryPlayPackagedAudioAsync(string file)
+    {
+        try
+        {
+            // Try to open packaged file; if it's valid mp3, play it
+            var stream = await FileSystem.OpenAppPackageFileAsync(file);
+            if (stream == null)
+                return false;
+
+            // Copy to temp and check header
+            var tempFile = Path.Combine(FileSystem.CacheDirectory, file);
+            using (var fs = File.Create(tempFile))
+            {
+                await stream.CopyToAsync(fs);
+            }
+
+            // Basic header check
+            using var checkFs = File.OpenRead(tempFile);
+            var header = new byte[3];
+            var read = await checkFs.ReadAsync(header, 0, header.Length);
+            var isMp3 = false;
+            if (read >= 3)
+            {
+                if (header[0] == (byte)'I' && header[1] == (byte)'D' && header[2] == (byte)'3')
+                    isMp3 = true;
+                if (header[0] == 0xFF)
+                    isMp3 = true;
+            }
+
+            if (!isMp3)
+                return false;
+
+            await PlayAudio(tempFile);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("TryPlayPackagedAudioAsync failed: " + ex.Message);
+            return false;
+        }
+    }
+
+    async Task<string?> GenerateTtsAudioFileAsync(Poi poi, string language, string text)
+    {
+#if ANDROID
+        try
+        {
+            var ctx = Android.App.Application.Context;
+            var tcsInit = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tts = new Android.Speech.Tts.TextToSpeech(ctx, new TextToSpeechInitListener(tcsInit));
+            var inited = await tcsInit.Task.TimeoutAfter(TimeSpan.FromSeconds(5));
+            if (!inited)
+            {
+                try { tts.Shutdown(); } catch { }
+                return null;
+            }
+
+            var locale = Java.Util.Locale.Default;
+            try { tts.SetLanguage(locale); } catch { }
+
+            var outputFile = Path.Combine(FileSystem.CacheDirectory, poi.Code + "_tts.mp3");
+            if (File.Exists(outputFile))
+                File.Delete(outputFile);
+
+            var tcsDone = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var listener = new UtteranceListener(tcsDone);
+            tts.SetOnUtteranceProgressListener(listener);
+
+            var bundle = new Android.OS.Bundle();
+            var utteranceId = Guid.NewGuid().ToString();
+
+            // Synthesize to file
+            try
+            {
+                if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Lollipop)
+                {
+                    tts.SynthesizeToFile(text, bundle, outputFile, utteranceId);
+                }
+                else
+                {
+                    // older API not supported reliably
+                    tts.SynthesizeToFile(text, null, outputFile, utteranceId);
+                }
+            }
+
+            // Wait for completion (timeout)
+            var completed = await tcsDone.Task.TimeoutAfter(TimeSpan.FromSeconds(10));
+            try { tts.Shutdown(); } catch { }
+            if (completed && File.Exists(outputFile))
+                return outputFile;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("GenerateTtsAudioFileAsync Android error: " + ex.Message);
+        }
+#endif
+        // non-Android: no file generation, return null
+        return null;
+    }
+    }
+
+    async Task PlayAudio(string file)
+    {
+        try
+        {
+            Console.WriteLine("Playing audio: " + file);
+
+            var stream = await FileSystem.OpenAppPackageFileAsync(file);
+
+            var tempFile = Path.Combine(FileSystem.CacheDirectory, file);
+
+            using (var fs = File.Create(tempFile))
+            {
+                await stream.CopyToAsync(fs);
+            }
+
+            // Quick header check to detect if file is a real MP3 (basic checks)
+            try
+            {
+                using var checkFs = File.OpenRead(tempFile);
+                var header = new byte[3];
+                var read = await checkFs.ReadAsync(header, 0, header.Length);
+                var isMp3 = false;
+                if (read >= 3)
+                {
+                    // ID3 tag or frame sync 0xFF
+                    if (header[0] == (byte)'I' && header[1] == (byte)'D' && header[2] == (byte)'3')
+                        isMp3 = true;
+                    if (header[0] == 0xFF)
+                        isMp3 = true;
+                }
+
+                if (!isMp3)
+                {
+                    Console.WriteLine("Audio file appears not to be a valid mp3: " + tempFile);
+                    // Fallback to TTS message
+                    await TextToSpeech.Default.SpeakAsync("Không thể phát file âm thanh. Chúng tôi sẽ đọc phần thuyết minh bằng giọng nói.");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Audio header check failed: " + ex.Message);
+            }
+
+            // Ensure any existing player is released
+            try { player?.Release(); } catch { }
+
+            // Try to play using MediaPlayer
+            player = new MediaPlayer();
+
+            // If file exists, set data source
+            if (File.Exists(tempFile))
+            {
+                try
+                {
+                    player.SetDataSource(tempFile);
+                    player.Prepared += (s, e) => { try { player.Start(); } catch { } };
+                    player.Completion += (s, e) => { try { player.Stop(); player.Release(); player = null; } catch { } };
+                    player.PrepareAsync();
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("MediaPlayer SetDataSource failed: " + ex.Message);
+                    try { player.Release(); } catch { }
+                    player = null;
+                }
+            }
+
+            // Fallback: on Android try MediaPlayer.Create with resource uri, otherwise fallback to TTS
+            try
+            {
+                #if ANDROID
+                var ctx = Android.App.Application.Context;
+                var uri = Android.Net.Uri.Parse("file://" + tempFile);
+                var mp = MediaPlayer.Create(ctx, uri);
+                if (mp != null)
+                {
+                    player = mp;
+                    mp.Start();
+                    mp.Completion += (s, e) => { try { mp.Stop(); mp.Release(); } catch { } };
+                    return;
+                }
+                #endif
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Fallback MediaPlayer.Create failed: " + ex.Message);
+            }
+
+            // Final fallback: use TextToSpeech to read a short message
+            try
+            {
+                await TextToSpeech.Default.SpeakAsync("Đang phát thuyết minh, nhưng có lỗi khi phát file audio. Xin lỗi về sự cố.");
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Audio error: " + ex.Message);
+        }
+    }
+}
+
+public class MockPoiRepository : IPoiRepository
+{
+    readonly IReadOnlyList<Poi> _pois;
+
+    public MockPoiRepository()
+    {
+        _pois = new List<Poi>
+        {
+           new()
+{
+    Id = "bun-mam",
+    Code = "POI001",
+   Lat = 10.76067,
+   Lng = 106.70322,
+    RadiusMeters = 40,
+    Priority = 3,
+    Translations =
+    {
+        new PoiTranslation
+        {
+            Language = "vi",
+            Title = "Bún Mắm Vĩnh Khánh",
+            Description = "Quán bún mắm nổi tiếng trên đường Vĩnh Khánh.",
+            TtsScript = "Bạn đang đứng trước quán Bún Mắm trên đường Vĩnh Khánh.",
+            AudioFile = "bun_mam_222.mp3"
+        }
+    }
+},
+
+new()
+{
+    Id = "oc-oanh",
+    Code = "POI002",
+    Lat = 10.76103,
+    Lng = 106.70306,
+    RadiusMeters = 40,
+    Priority = 2,
+    Translations =
+    {
+        new PoiTranslation
+        {
+            Language = "vi",
+            Title = "Ốc Oanh",
+            Description = "Quán ốc nổi tiếng của phố ẩm thực Vĩnh Khánh.",
+            TtsScript = "Bạn đang đến quán Ốc Oanh trên đường Vĩnh Khánh.",
+            AudioFile = "oc_oanh.mp3"
+        }
+    }
+},
+
+new()
+{
+    Id = "com-tam",
+    Code = "POI003",
+  Lat = 10.76048,
+  Lng = 106.70344,
+    RadiusMeters = 40,
+    Priority = 1,
+    Translations =
+    {
+        new PoiTranslation
+        {
+            Language = "vi",
+            Title = "Cơm Tấm Vĩnh Khánh",
+            Description = "Quán cơm tấm nổi tiếng khu Vĩnh Khánh.",
+            TtsScript = "Bạn đang đứng trước quán cơm tấm trên đường Vĩnh Khánh.",
+            AudioFile = "com_tam_vinh_khanh.mp3"
+        }
+    }
+}        };
+    }
+
+    public Task<IReadOnlyList<Poi>> GetPoisAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(_pois);
+
+    public Task<Poi?> GetPoiByCodeAsync(string code, CancellationToken cancellationToken = default)
+        => Task.FromResult(_pois.FirstOrDefault(p => string.Equals(p.Code, code, StringComparison.OrdinalIgnoreCase)));
+}
+
+public class AnalyticsService : IAnalyticsService
+{
+    public Task LogPoiPlayedAsync(Poi poi, string language, TimeSpan duration, CancellationToken cancellationToken = default)
+    {
+        var message = $"Đã nghe: {poi.Translations.FirstOrDefault(t => t.Language == language)?.Title ?? poi.Id}";
+        var toast = Toast.Make(message, ToastDuration.Short);
+
+        return toast.Show(cancellationToken);
+    }
+}

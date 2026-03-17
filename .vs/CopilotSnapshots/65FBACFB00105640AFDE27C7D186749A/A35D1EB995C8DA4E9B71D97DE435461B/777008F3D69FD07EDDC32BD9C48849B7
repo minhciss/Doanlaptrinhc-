@@ -1,0 +1,50 @@
+﻿using Microsoft.Maui.Controls.Maps;
+using Microsoft.Maui.Devices.Sensors;
+using Microsoft.Maui.Maps;
+using VinhKhanhapp.Models;
+using VinhKhanhapp.PageModels;
+
+namespace VinhKhanhapp.Pages;
+
+public partial class MapPage : ContentPage
+{
+    MapPageModel ViewModel => (MapPageModel)BindingContext;
+
+    public MapPage(MapPageModel viewModel)
+    {
+        InitializeComponent();
+        BindingContext = viewModel;
+        MainMap.HandlerChanged += (_, _) => UpdateMap();
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        UpdateMap();
+    }
+
+    void UpdateMap()
+    {
+        if (ViewModel.CurrentLocation != null)
+        {
+            var span = MapSpan.FromCenterAndRadius(
+                ViewModel.CurrentLocation,
+                Distance.FromMeters(200));
+            MainMap.MoveToRegion(span);
+        }
+
+        MainMap.Pins.Clear();
+        foreach (var poi in ViewModel.Pois)
+        {
+            var translation = poi.Translations.FirstOrDefault() ?? new PoiTranslation { Title = poi.Id };
+            MainMap.Pins.Add(new Pin
+            {
+                Label = translation.Title,
+                Address = translation.Description,
+                Location = new Location(poi.Lat, poi.Lng),
+                Type = PinType.Place
+            });
+        }
+    }
+}
+

@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+             xmlns:pageModels="clr-namespace:VinhKhanhapp.PageModels"
+             xmlns:models="clr-namespace:VinhKhanhapp.Models"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="VinhKhanhapp.Pages.MapPage"
+             x:DataType="pageModels:MapPageModel"
+             Title="Phố ẩm thực Vĩnh Khánh">
+
+    <ContentPage.Behaviors>
+        <toolkit:EventToCommandBehavior EventName="Appearing"
+                                        Command="{Binding InitializeAsyncCommand}" />
+    </ContentPage.Behaviors>
+
+    <Grid>
+        <maps:Map x:Name="MainMap"
+                  IsShowingUser="True"
+                  MapType="Street"
+                  VerticalOptions="Fill"
+                  HorizontalOptions="Fill" />
+
+        <Grid HeightRequest="56" BackgroundColor="#6C4DF6" VerticalOptions="Start">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ImageButton Source="{StaticResource IconMenu}" BackgroundColor="Transparent" HeightRequest="40" WidthRequest="40" Margin="8" />
+            <Label Grid.Column="1" Text="Phố ẩm thực Vĩnh Khánh" TextColor="White" FontAttributes="Bold" VerticalOptions="Center" HorizontalOptions="Center" />
+            <ImageButton Grid.Column="2" Source="{StaticResource IconLocate}" BackgroundColor="Transparent" HeightRequest="40" WidthRequest="40" Margin="8" Command="{Binding RefreshLocationAsyncCommand}" />
+        </Grid>
+
+        <Border StrokeShape="RoundRectangle 12" BackgroundColor="White" Padding="12" HorizontalOptions="Center" VerticalOptions="Start" Margin="16,66,16,0">
+            <Grid ColumnDefinitions="Auto,*">
+                <Label Text="📍" FontSize="18" VerticalOptions="Center" />
+                <VerticalStackLayout Grid.Column="1" Spacing="2" Padding="8,0,0,0">
+                    <Label Text="Vị trí của bạn" FontAttributes="Bold" />
+                    <Label Text="{Binding CurrentLocationText}" TextColor="Gray" FontSize="13" />
+                </VerticalStackLayout>
+                <Button Grid.Column="2" Text="🔄" Command="{Binding RefreshLocationAsyncCommand}" BackgroundColor="#E8EAF6" CornerRadius="20" HeightRequest="36" WidthRequest="36" HorizontalOptions="End" VerticalOptions="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Bottom POI list (horizontal) -->
+        <Border BackgroundColor="White" StrokeShape="RoundRectangle 16" Padding="8" HorizontalOptions="Fill" VerticalOptions="End" Margin="12" HeightRequest="160">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Label Text="Quán ăn nổi bật" FontAttributes="Bold" Grid.Row="0" Margin="8,4" />
+
+                <CollectionView x:Name="PoisCollectionView"
+                                Grid.Row="1"
+                                ItemsSource="{Binding Pois}"
+                                ItemsLayout="HorizontalList"
+                                SelectionMode="Single"
+                                SelectionChanged="PoisCollectionView_SelectionChanged">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:Poi">
+                            <Frame Padding="8" Margin="6" CornerRadius="12" HasShadow="True" BackgroundColor="#FFF">
+                                <VerticalStackLayout WidthRequest="220">
+                                    <Label Text="{Binding Translations[0].Title}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Translations[0].Description}" FontSize="12" TextColor="Gray" LineBreakMode="TailTruncation" MaxLines="2" />
+                                    <HorizontalStackLayout Spacing="8" VerticalOptions="End" Margin="0,8,0,0">
+                                        <Button Text="Nghe" BackgroundColor="#6C4DF6" TextColor="White" CornerRadius="14" CommandParameter="{Binding .}" Clicked="PoiPlayButton_Clicked" />
+                                        <Button Text="Đến đây" BackgroundColor="#EFEFEF" TextColor="#333" CornerRadius="14" CommandParameter="{Binding .}" Clicked="PoiNavigateButton_Clicked" />
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Border>
+
+        <!-- Floating locate FAB -->
+        <ImageButton Source="🔵" BackgroundColor="#FFFFFF" WidthRequest="56" HeightRequest="56" CornerRadius="28" HorizontalOptions="End" VerticalOptions="End" Margin="0,0,18,186" Clicked="LocateButton_Clicked"/>
+    </Grid>
+</ContentPage>
+

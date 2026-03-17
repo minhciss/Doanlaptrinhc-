@@ -1,0 +1,95 @@
+﻿using Microsoft.Maui.Controls.Maps;
+using Microsoft.Maui.Devices.Sensors;
+using Microsoft.Maui.Maps;
+using VinhKhanhapp.Models;
+using VinhKhanhapp.PageModels;
+
+namespace VinhKhanhapp.Pages;
+
+public partial class MapPage : ContentPage
+{
+    MapPageModel ViewModel => (MapPageModel)BindingContext;
+
+    // Tọa độ Phố Vĩnh Khánh
+    readonly Location VinhKhanhLocation = new Location(10.7579, 106.7035);
+
+    public MapPage(MapPageModel viewModel)
+    {
+        InitializeComponent();
+        BindingContext = viewModel;
+
+        MainMap.HandlerChanged += (_, _) => UpdateMap();
+
+        if (viewModel != null)
+        {
+            viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            viewModel.Pois.CollectionChanged += Pois_CollectionChanged;
+        }
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        UpdateMap();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+
+        if (BindingContext is MapPageModel vm)
+        {
+            vm.PropertyChanged -= ViewModel_PropertyChanged;
+            vm.Pois.CollectionChanged -= Pois_CollectionChanged;
+        }
+    }
+
+    void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewModel.CurrentLocation))
+            MainThread.BeginInvokeOnMainThread(UpdateMap);
+    }
+
+    void Pois_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(UpdateMap);
+    }
+
+    void UpdateMap()
+    {
+        //// Tọa độ Phố Vĩnh Khánh
+        //var vinhKhanh = new Location(10.7579, 106.7035);
+
+        //var span = MapSpan.FromCenterAndRadius(
+        //    vinhKhanh,
+        //    Distance.FromMeters(300));
+
+        //MainMap.MoveToRegion(span);
+
+        //MainMap.Pins.Clear();
+
+        // Pin trung tâm phố ẩm thực
+        //MainMap.Pins.Add(new Pin
+        //{
+        //    Label = "Phố ẩm thực Vĩnh Khánh",
+        //    Address = "Quận 4 - TP.HCM",
+        //    Location = vinhKhanh,
+        //    Type = PinType.Place
+        //});
+
+        // Hiện các POI
+        foreach (var poi in ViewModel.Pois)
+        {
+            var translation = poi.Translations.FirstOrDefault()
+                ?? new PoiTranslation { Title = poi.Id };
+
+            MainMap.Pins.Add(new Pin
+            {
+                Label = translation.Title,
+                Address = translation.Description,
+                Location = new Location(poi.Lat, poi.Lng),
+                Type = PinType.Place
+            });
+        }
+    }
+}

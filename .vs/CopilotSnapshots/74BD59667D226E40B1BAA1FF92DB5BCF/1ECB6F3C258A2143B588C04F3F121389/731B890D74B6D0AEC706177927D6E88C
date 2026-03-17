@@ -1,0 +1,235 @@
+﻿using Android.Media;
+using Android.Runtime;
+using Android.Webkit;
+using CommunityToolkit.Maui.Alerts;
+using CommunityToolkit.Maui.Core;
+using System.Runtime.Versioning;
+using VinhKhanhapp.Models;
+
+namespace VinhKhanhapp.Services;
+
+using MauiTTS = Microsoft.Maui.Media.TextToSpeech;
+using AndroidTTS = Android.Speech.Tts.TextToSpeech;
+
+public interface IAudioService
+{
+    Task PlayPoiAsync(Poi poi, string language, CancellationToken cancellationToken = default);
+}
+
+public interface IPoiRepository
+{
+    Task<IReadOnlyList<Poi>> GetPoisAsync(CancellationToken cancellationToken = default);
+    Task<Poi?> GetPoiByCodeAsync(string code, CancellationToken cancellationToken = default);
+}
+
+public interface IAnalyticsService
+{
+    Task LogPoiPlayedAsync(Poi poi, string language, TimeSpan duration, CancellationToken cancellationToken = default);
+}
+
+public class AudioService : IAudioService
+{
+    private MediaPlayer? player;
+
+#if ANDROID
+    // Listener cho việc khởi tạo TextToSpeech
+    class TextToSpeechInitListener(TaskCompletionSource<bool> tcs) : Java.Lang.Object, AndroidTTS.IOnInitListener
+    {
+        public void OnInit([GeneratedEnum] Android.Speech.Tts.OperationResult status)
+            => tcs.TrySetResult(status == Android.Speech.Tts.OperationResult.Success);
+    }
+
+    // Listener theo dõi tiến trình ghi file TTS
+    class UtteranceListener(TaskCompletionSource<bool> tcs) : Android.Speech.Tts.UtteranceProgressListener
+    {
+        public override void OnDone(string? utteranceId) => tcs.TrySetResult(true);
+        public override void OnError(string? utteranceId) => tcs.TrySetResult(false);
+
+        [Obsolete]
+        public override void OnError(string? utteranceId, [GeneratedEnum] Android.Speech.Tts.ClientError errorCode)
+            => tcs.TrySetResult(false);
+
+        public override void OnStart(string? utteranceId) { }
+    }
+#endif
+
+    public async Task PlayPoiAsync(Poi poi, string language, CancellationToken cancellationToken = default)
+    {
+        var translation = poi.Translations.FirstOrDefault(t => t.Language == language)
+                          ?? poi.Translations.FirstOrDefault();
+
+        if (translation == null) return;
+
+        // 1. Thử phát file âm thanh có sẵn
+        if (!string.IsNullOrWhiteSpace(translation.AudioFile))
+        {
+            var exists = await TryPlayPackagedAudioAsync(translation.AudioFile, cancellationToken);
+            if (exists) return;
+        }
+
+        // 2. Chuẩn bị nội dung chữ (TTS)
+        var contentToSpeak = translation.TtsScript ?? translation.Description;
+        if (string.IsNullOrWhiteSpace(contentToSpeak)) return;
+
+#if ANDROID
+        // 3. Thử tạo file TTS trên Android để phát qua MediaPlayer (ổn định hơn)
+        var generatedPath = await GenerateTtsAudioFileAsync(poi, language, contentToSpeak);
+        if (!string.IsNullOrWhiteSpace(generatedPath))
+        {
+            await PlayAudio(generatedPath, cancellationToken);
+            return;
+        }
+#endif
+
+        // 4. Fallback cuối cùng: Dùng TextToSpeech mặc định của MAUI
+        await MauiTTS.Default.SpeakAsync(contentToSpeak, cancelToken: cancellationToken);
+    }
+
+    private async Task<bool> TryPlayPackagedAudioAsync(string file, CancellationToken ct)
+    {
+        try
+        {
+            var tempFile = Path.Combine(FileSystem.CacheDirectory, file);
+            using (var stream = await FileSystem.OpenAppPackageFileAsync(file))
+            using (var fs = File.Create(tempFile))
+            {
+                await stream.CopyToAsync(fs, ct);
+            }
+
+            if (!File.Exists(tempFile)) return false;
+
+            // Kiểm tra header file đơn giản
+            using var checkFs = File.OpenRead(tempFile);
+            var header = new byte[4];
+            var read = await checkFs.ReadAsync(header, 0, header.Length, ct);
+
+            bool isAudio = false;
+            if (read >= 3 && ((header[0] == 'I' && header[1] == 'D' && header[2] == '3') || header[0] == 0xFF))
+                isAudio = true;
+            else if (read >= 4 && (header[0] == 'R' && header[1] == 'I' && header[2] == 'F'))
+                isAudio = true;
+
+            if (!isAudio) return false;
+
+            await PlayAudio(tempFile, ct);
+            return true;
+        }
+        catch { return false; }
+    }
+
+#if ANDROID
+    [SupportedOSPlatform("android21.0")]
+    private async Task<string?> GenerateTtsAudioFileAsync(Poi poi, string language, string text)
+    {
+        try
+        {
+            var tcsInit = new TaskCompletionSource<bool>();
+            using var tts = new AndroidTTS(Android.App.Application.Context, new TextToSpeechInitListener(tcsInit));
+
+            // Chờ khởi tạo (timeout 5s)
+            if (await Task.WhenAny(tcsInit.Task, Task.Delay(5000)) != tcsInit.Task) return null;
+
+            var outputFile = Path.Combine(FileSystem.CacheDirectory, $"{poi.Code}_tts.mp3");
+            var tcsDone = new TaskCompletionSource<bool>();
+            tts.SetOnUtteranceProgressListener(new UtteranceListener(tcsDone));
+
+            var fileObj = new Java.IO.File(outputFile);
+            tts.SynthesizeToFile(text, null, fileObj, Guid.NewGuid().ToString());
+
+            // Chờ ghi file xong (timeout 10s)
+            if (await Task.WhenAny(tcsDone.Task, Task.Delay(10000)) == tcsDone.Task)
+                return outputFile;
+        }
+        catch (Exception ex) { Console.WriteLine("TTS Generation Error: " + ex.Message); }
+        return null;
+    }
+#endif
+
+    private async Task PlayAudio(string filePath, CancellationToken ct)
+    {
+#if ANDROID
+        try
+        {
+            player?.Release();
+            player = new MediaPlayer();
+            player.SetDataSource(filePath);
+
+            var tcs = new TaskCompletionSource<bool>();
+            player.Prepared += (s, e) => player.Start();
+            player.Completion += (s, e) => { tcs.TrySetResult(true); player?.Release(); player = null; };
+
+            player.PrepareAsync();
+
+            // Cho phép dừng nếu CancellationToken yêu cầu
+            using (ct.Register(() => { try { player?.Stop(); } catch { } tcs.TrySetResult(false); }))
+            {
+                await tcs.Task;
+            }
+        }
+        catch { await MauiTTS.Default.SpeakAsync("Lỗi phát âm thanh.", cancelToken: ct); }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+}
+
+public class MockPoiRepository : IPoiRepository
+{
+    readonly IReadOnlyList<Poi> _pois;
+
+    public MockPoiRepository()
+    {
+        _pois = new List<Poi>
+        {
+            new() {
+                Id = "bun-mam",
+                Code = "POI001",
+                Lat = 10.76067, Lng = 106.70322,
+                RadiusMeters = 40,
+                Priority = 3,
+                Translations = {
+                    new PoiTranslation {
+                        Language = "vi",
+                        Title = "Bún Mắm Vĩnh Khánh",
+                        Description = "Quán bún mắm nổi tiếng trên đường Vĩnh Khánh.",
+                        TtsScript = "Bạn đang đứng trước quán Bún Mắm trên đường Vĩnh Khánh.",
+                        AudioFile = "bun_mam_222.mp3"
+                    }
+                }
+            },
+            new() {
+                Id = "oc-oanh",
+                Code = "POI002",
+                Lat = 10.76103, Lng = 106.70306,
+                RadiusMeters = 40,
+                Priority = 2,
+                Translations = {
+                    new PoiTranslation {
+                        Language = "vi",
+                        Title = "Ốc Oanh",
+                        Description = "Quán ốc nổi tiếng của phố ẩm thực Vĩnh Khánh.",
+                        TtsScript = "Bạn đang đến quán Ốc Oanh trên đường Vĩnh Khánh.",
+                        AudioFile = "oc_oanh.mp3"
+                    }
+                }
+            }
+        };
+    }
+
+    public Task<IReadOnlyList<Poi>> GetPoisAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(_pois);
+
+    public Task<Poi?> GetPoiByCodeAsync(String code, CancellationToken cancellationToken = default)
+        => Task.FromResult(_pois.FirstOrDefault(p => string.Equals(p.Code, code, StringComparison.OrdinalIgnoreCase)));
+}
+
+public class AnalyticsService : IAnalyticsService
+{
+    public Task LogPoiPlayedAsync(Poi poi, string language, TimeSpan duration, CancellationToken cancellationToken = default)
+    {
+        var title = poi.Translations.FirstOrDefault(t => t.Language == language)?.Title ?? poi.Id;
+        return MainThread.InvokeOnMainThreadAsync(() => {
+            Toast.Make($"Đã nghe: {title}", ToastDuration.Short).Show(cancellationToken);
+        });
+    }
+}

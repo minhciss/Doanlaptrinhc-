@@ -1,0 +1,105 @@
+﻿<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+    x:Class="VinhKhanhapp.Pages.MapPage">
+
+    <Grid>
+
+        <!-- MAP FULL SCREEN -->
+        <maps:Map
+            x:Name="MainMap"
+            MapType="Street"
+            IsShowingUser="True"/>
+
+        <!-- HEADER -->
+        <Grid
+            BackgroundColor="#6C4DF6"
+            HeightRequest="70"
+            VerticalOptions="Start">
+
+            <Label
+                Text="Phố ẩm thực Vĩnh Khánh"
+                TextColor="White"
+                FontSize="20"
+                FontAttributes="Bold"
+                HorizontalOptions="Center"
+                VerticalOptions="Center"/>
+        </Grid>
+
+        <!-- LOCATION CARD -->
+        <Frame
+            Margin="15,80,15,0"
+            VerticalOptions="Start"
+            CornerRadius="18"
+            Padding="15"
+            BackgroundColor="White"
+            HasShadow="True">
+
+            <Grid ColumnDefinitions="*,Auto">
+
+                <VerticalStackLayout>
+
+                    <Label
+                        Text="📍 Vị trí của bạn"
+                        FontAttributes="Bold"
+                        FontSize="16"/>
+
+                    <Label
+                        Text="{Binding LocationText}"
+                        FontSize="14"
+                        TextColor="Gray"/>
+
+                </VerticalStackLayout>
+
+                <Button
+                    Grid.Column="1"
+                    Text="Làm mới"
+                    Command="{Binding RefreshCommand}"
+                    BackgroundColor="#6C4DF6"
+                    TextColor="White"
+                    CornerRadius="12"
+                    HeightRequest="40"/>
+
+            </Grid>
+
+        </Frame>
+
+        <!-- POI CARD (QUÁN ĂN) -->
+        <Frame
+            Margin="20"
+            VerticalOptions="End"
+            CornerRadius="20"
+            Padding="15"
+            BackgroundColor="White"
+            HasShadow="True">
+
+            <VerticalStackLayout Spacing="8">
+
+                <Label
+                    Text="Ốc Oanh"
+                    FontSize="18"
+                    FontAttributes="Bold"/>
+
+                <Label
+                    Text="📍 534 Vĩnh Khánh - Quận 4"
+                    FontSize="14"
+                    TextColor="Gray"/>
+
+                <Label
+                    Text="⭐ 4.6 | Hải sản - Ốc"
+                    FontSize="14"/>
+
+                <Button
+                    Text="🎧 Nghe thuyết minh"
+                    BackgroundColor="#6C4DF6"
+                    TextColor="White"
+                    CornerRadius="15"/>
+
+            </VerticalStackLayout>
+
+        </Frame>
+
+    </Grid>
+
+</ContentPage>

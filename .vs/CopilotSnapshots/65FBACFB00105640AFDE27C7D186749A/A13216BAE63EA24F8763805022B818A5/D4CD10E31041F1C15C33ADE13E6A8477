@@ -1,0 +1,117 @@
+﻿using Microsoft.Maui.Controls.Maps;
+using Microsoft.Maui.Devices.Sensors;
+using Microsoft.Maui.Maps;
+using VinhKhanhapp.Models;
+using VinhKhanhapp.PageModels;
+
+namespace VinhKhanhapp.Pages;
+
+public partial class MapPage : ContentPage
+{
+    MapPageModel ViewModel => (MapPageModel)BindingContext;
+
+    // Tọa độ Phố Vĩnh Khánh
+    readonly Location VinhKhanhLocation = new Location(10.7579, 106.7035);
+
+    public MapPage(MapPageModel viewModel)
+    {
+        InitializeComponent();
+        BindingContext = viewModel;
+
+        MainMap.HandlerChanged += (_, _) => UpdateMap();
+
+        if (viewModel != null)
+        {
+            viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            viewModel.Pois.CollectionChanged += Pois_CollectionChanged;
+        }
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        UpdateMap();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+
+        if (BindingContext is MapPageModel vm)
+        {
+            vm.PropertyChanged -= ViewModel_PropertyChanged;
+            vm.Pois.CollectionChanged -= Pois_CollectionChanged;
+        }
+    }
+
+    void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewModel.CurrentLocation))
+            MainThread.BeginInvokeOnMainThread(UpdateMap);
+    }
+
+    void Pois_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(UpdateMap);
+    }
+
+    void UpdateMap()
+    {
+        // Clear previous overlays
+        MainMap.Pins.Clear();
+        MainMap.MapElements.Clear();
+
+        // Center map on current location (or Vĩnh Khánh fallback)
+        var center = ViewModel.CurrentLocation ?? VinhKhanhLocation;
+        var span = MapSpan.FromCenterAndRadius(center, Distance.FromMeters(400));
+        MainMap.MoveToRegion(span);
+
+        // Draw a polyline for a demo of the Vĩnh Khánh street (approximate route)
+        try
+        {
+            var route = new MapPolyline
+            {
+                StrokeColor = Colors.FromArgb("#2B88F6"),
+                StrokeWidth = 6
+            };
+
+            // Example coordinates along Vĩnh Khánh / nearby (approximate)
+            route.Geopath.Add(new Microsoft.Maui.Maps.Location(10.7583, 106.7030));
+            route.Geopath.Add(new Microsoft.Maui.Maps.Location(10.7579, 106.7035));
+            route.Geopath.Add(new Microsoft.Maui.Maps.Location(10.7575, 106.7040));
+            route.Geopath.Add(new Microsoft.Maui.Maps.Location(10.7571, 106.7046));
+
+            MainMap.MapElements.Add(route);
+        }
+        catch
+        {
+            // ignore if MapPolyline not supported on a platform
+        }
+
+        // Add pins for POIs
+        foreach (var poi in ViewModel.Pois)
+        {
+            var translation = poi.Translations.FirstOrDefault() ?? new PoiTranslation { Title = poi.Id };
+            var pin = new Pin
+            {
+                Label = translation.Title,
+                Address = translation.Description,
+                Location = new Microsoft.Maui.Maps.Location(poi.Lat, poi.Lng),
+                Type = PinType.Place
+            };
+
+            MainMap.Pins.Add(pin);
+        }
+
+        // Optionally, add a marker for current location (if available)
+        if (ViewModel.CurrentLocation != null)
+        {
+            MainMap.Pins.Add(new Pin
+            {
+                Label = "Bạn đang ở đây",
+                Location = ViewModel.CurrentLocation,
+                Type = PinType.Place
+            });
+        }
+    }
+}

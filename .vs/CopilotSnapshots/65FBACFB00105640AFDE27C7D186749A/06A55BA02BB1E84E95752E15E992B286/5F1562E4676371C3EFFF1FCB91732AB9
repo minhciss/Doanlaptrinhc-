@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- Replace with your real key (do not commit real keys to git) -->
+	<string name="google_maps_api_key">YOUR_API_KEY_HERE</string>
+</resources>
+

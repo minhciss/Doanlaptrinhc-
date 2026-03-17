@@ -1,0 +1,185 @@
+﻿using Microsoft.Maui.Controls.Maps;
+using Microsoft.Maui.Devices.Sensors;
+using Microsoft.Maui.Maps;
+using Microsoft.Maui.Graphics;
+using VinhKhanhapp.Models;
+using VinhKhanhapp.PageModels;
+
+namespace VinhKhanhapp.Pages;
+
+public partial class MapPage : ContentPage
+{
+    MapPageModel ViewModel => (MapPageModel)BindingContext;
+
+    // Tọa độ Phố Vĩnh Khánh
+    readonly Location VinhKhanhLocation = new Location(10.7579, 106.7035);
+
+    public MapPage(MapPageModel viewModel)
+    {
+        InitializeComponent();
+        BindingContext = viewModel;
+
+        MainMap.HandlerChanged += (_, _) => UpdateMap();
+        MainMap.MapClicked += MainMap_MapClicked;
+
+        if (viewModel != null)
+        {
+            viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            viewModel.Pois.CollectionChanged += Pois_CollectionChanged;
+        }
+
+    async void PoisCollectionView_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        try
+        {
+            var poi = e.CurrentSelection?.FirstOrDefault() as Poi;
+            if (poi == null)
+                return;
+
+            // center map on selected POI
+            var loc = new Location(poi.Lat, poi.Lng);
+            var span = MapSpan.FromCenterAndRadius(loc, Distance.FromMeters(120));
+            MainMap.MoveToRegion(span);
+
+            ViewModel.NearestPoi = poi;
+            await ViewModel.PlayNearestPoiAsync();
+
+            // clear selection to allow reselect
+            if (sender is CollectionView cv)
+                cv.SelectedItem = null;
+        }
+        catch { }
+    }
+
+    async void PoiPlayButton_Clicked(object? sender, EventArgs e)
+    {
+        if (sender is Button b && b.CommandParameter is Poi poi)
+        {
+            ViewModel.NearestPoi = poi;
+            await ViewModel.PlayNearestPoiAsync();
+        }
+    }
+
+    void PoiNavigateButton_Clicked(object? sender, EventArgs e)
+    {
+        if (sender is Button b && b.CommandParameter is Poi poi)
+        {
+            var loc = new Location(poi.Lat, poi.Lng);
+            MainMap.MoveToRegion(MapSpan.FromCenterAndRadius(loc, Distance.FromMeters(120)));
+        }
+    }
+
+    void LocateButton_Clicked(object? sender, EventArgs e)
+    {
+        var loc = ViewModel.CurrentLocation ?? VinhKhanhLocation;
+        MainMap.MoveToRegion(MapSpan.FromCenterAndRadius(loc, Distance.FromMeters(150)));
+    }
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        UpdateMap();
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+
+        if (BindingContext is MapPageModel vm)
+        {
+            vm.PropertyChanged -= ViewModel_PropertyChanged;
+            vm.Pois.CollectionChanged -= Pois_CollectionChanged;
+            vm.StopLocationUpdates();
+        }
+    }
+
+    void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ViewModel.CurrentLocation))
+            MainThread.BeginInvokeOnMainThread(UpdateMap);
+    }
+
+    void Pois_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        MainThread.BeginInvokeOnMainThread(UpdateMap);
+    }
+
+    void UpdateMap()
+    {
+        if (ViewModel.CurrentLocation != null)
+        {
+            var span = MapSpan.FromCenterAndRadius(
+                ViewModel.CurrentLocation,
+                Distance.FromMeters(200));
+            MainMap.MoveToRegion(span);
+        }
+        else
+        {
+            var span = MapSpan.FromCenterAndRadius(
+                VinhKhanhLocation,
+                Distance.FromMeters(400));
+            MainMap.MoveToRegion(span);
+        }
+
+        MainMap.Pins.Clear();
+
+        // Add POI pins (use emoji marker in label for custom look)
+        foreach (var poi in ViewModel.Pois)
+        {
+            var translation = poi.Translations.FirstOrDefault() ?? new PoiTranslation { Title = poi.Id };
+            MainMap.Pins.Add(new Pin
+            {
+                Label = $"🍽️ {translation.Title}",
+                Address = translation.Description,
+                Location = new Location(poi.Lat, poi.Lng),
+                Type = PinType.Place
+            });
+        }
+
+        // Current location pin
+        if (ViewModel.CurrentLocation != null)
+        {
+            MainMap.Pins.Add(new Pin
+            {
+                Label = "Bạn đang ở đây",
+                Location = ViewModel.CurrentLocation,
+                Type = PinType.Place
+            });
+        }
+    }
+
+    void MainMap_MapClicked(object? sender, Microsoft.Maui.Controls.Maps.MapClickedEventArgs e)
+    {
+        try
+        {
+            var clicked = e.Location; // Microsoft.Maui.Maps.Location
+            Poi? nearest = null;
+            double best = double.MaxValue;
+
+            foreach (var poi in ViewModel.Pois)
+            {
+                var distance = Location.CalculateDistance(
+                    clicked,
+                    new Location(poi.Lat, poi.Lng),
+                    DistanceUnits.Kilometers) * 1000.0;
+                if (distance < best)
+                {
+                    best = distance;
+                    nearest = poi;
+                }
+            }
+
+            // If clicked near a POI (within 100m) select it
+            if (nearest != null && best <= 100)
+            {
+                ViewModel.NearestPoi = nearest;
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    UpdateMap();
+                });
+            }
+        }
+        catch { }
+    }
+}

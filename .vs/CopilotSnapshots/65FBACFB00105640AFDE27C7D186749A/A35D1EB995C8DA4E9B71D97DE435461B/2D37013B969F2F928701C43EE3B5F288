@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:maps="clr-namespace:Microsoft.Maui.Controls.Maps;assembly=Microsoft.Maui.Controls.Maps"
+             xmlns:pageModels="clr-namespace:VinhKhanhapp.PageModels"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="VinhKhanhapp.Pages.MapPage"
+             x:DataType="pageModels:MapPageModel"
+             Title="Phố ẩm thực Vĩnh Khánh">
+
+    <ContentPage.Behaviors>
+        <toolkit:EventToCommandBehavior EventName="Appearing"
+                                        Command="{Binding InitializeAsyncCommand}" />
+    </ContentPage.Behaviors>
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid Padding="10" ColumnDefinitions="Auto,*,Auto">
+            <Label Text="Vị trí của bạn" VerticalOptions="Center" />
+            <Label Grid.Column="1"
+                   Text="{Binding CurrentLocationText}"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center" />
+            <Button Grid.Column="2"
+                    Text="Làm mới"
+                    Command="{Binding RefreshLocationAsyncCommand}" />
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <maps:Map x:Name="MainMap"
+                      IsShowingUser="True"
+                      MapType="Street" />
+
+            <VerticalStackLayout Spacing="4"
+                                  Padding="10"
+                                  HorizontalOptions="Fill"
+                                  VerticalOptions="End"
+                                  BackgroundColor="#88000000">
+                <Label Text="{Binding StatusMessage}"
+                       TextColor="White"
+                       IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                <Label Text="{Binding NearestPoiTitle}"
+                       TextColor="White"
+                       FontAttributes="Bold" />
+                <Label Text="{Binding NearestPoiDescription}"
+                       TextColor="White"
+                       MaxLines="2" />
+                <Button Text="Nghe thuyết minh"
+                        Command="{Binding PlayNearestPoiAsyncCommand}"
+                        IsEnabled="{Binding HasNearestPoi}" />
+            </VerticalStackLayout>
+        </Grid>
+    </Grid>
+</ContentPage>
+
