@@ -14,8 +14,8 @@
             <VerticalStackLayout Spacing="0">
                 
                 <!-- 🍊 Hero Banner with warm gradient -->
-                <Grid HeightRequest="280">
-                    <Image Source="https://images.unsplash.com/photo-1555126634-ba943e9cd117?w=800&amp;auto=format&amp;fit=crop&amp;q=80" 
+                <Grid HeightRequest="{OnIdiom Phone=240, Tablet=320, Desktop=360}">
+                    <Image Source="vinh_khanh_food_street_banner.jpg" 
                            Aspect="AspectFill" />
                     <BoxView>
                         <BoxView.Background>
@@ -115,18 +115,18 @@
                                     <Border.Shadow>
                                         <Shadow Brush="Black" Opacity="0.1" Offset="0,4" Radius="12" />
                                     </Border.Shadow>
-                                    <Grid RowDefinitions="200, Auto">
+                                    <Grid RowDefinitions="Auto, Auto">
                                         
                                         <!-- Image -->
                                         <Image Grid.Row="0"
                                                Source="{Binding ImageUrl}" 
                                                Aspect="AspectFill" 
-                                               HeightRequest="200"/>
+                                               HeightRequest="{OnIdiom Phone=180, Tablet=240, Desktop=280}"/>
                                                
                                         <!-- Gradient Overlay -->
                                         <BoxView Grid.Row="0"
                                                  VerticalOptions="End"
-                                                 HeightRequest="100">
+                                                 HeightRequest="{OnIdiom Phone=90, Tablet=120, Desktop=140}">
                                             <BoxView.Background>
                                                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                                     <GradientStop Color="Transparent" Offset="0.0" />
@@ -137,7 +137,7 @@
                                         
                                         <Label Grid.Row="0" 
                                                Text="{Binding DisplayName}" 
-                                               FontSize="20" 
+                                               FontSize="{OnIdiom Phone=18, Tablet=22, Desktop=24}" 
                                                FontAttributes="Bold" 
                                                TextColor="White"
                                                VerticalOptions="End"
@@ -151,24 +151,24 @@
                                                    LineBreakMode="TailTruncation" 
                                                    Opacity="0.8" />
                                             
-                                            <HorizontalStackLayout Spacing="12">
+                                            <FlexLayout Wrap="Wrap" Direction="Row">
                                                 <Border StrokeShape="RoundRectangle 10" 
                                                         BackgroundColor="{AppThemeBinding Light=#FFF0E6, Dark=#2A1F16}" 
                                                         StrokeThickness="0" 
-                                                        Padding="8,4">
-                                                    <Label Text="{Binding ListDisplayRadiusText}" 
+                                                        Padding="8,4" Margin="0,0,12,0">
+                                                    <Label Text="{Binding ListDisplayDistanceText}" 
                                                            FontSize="12" 
                                                            TextColor="{StaticResource Primary}" />
                                                 </Border>
                                                 <Border StrokeShape="RoundRectangle 10" 
                                                         BackgroundColor="{AppThemeBinding Light=#E8F8F0, Dark=#162A1F}" 
                                                         StrokeThickness="0" 
-                                                        Padding="8,4">
+                                                        Padding="8,4" Margin="0,0,12,0">
                                                     <Label Text="{local:Translate '🐚 Ốc'}" 
                                                            FontSize="12" 
                                                            TextColor="{StaticResource AccentGreen}" />
                                                 </Border>
-                                            </HorizontalStackLayout>
+                                            </FlexLayout>
                                         </VerticalStackLayout>
                                         
                                     </Grid>
@@ -195,7 +195,7 @@
                     StrokeShape="RoundRectangle 24,24,0,0" 
                     BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}"
                     StrokeThickness="0"
-                    HeightRequest="420">
+                    HeightRequest="{OnIdiom Phone=420, Tablet=500, Desktop=600}">
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.2" Offset="0,-4" Radius="16" />
                 </Border.Shadow>
@@ -204,13 +204,14 @@
                     <TapGestureRecognizer />
                 </Border.GestureRecognizers>
                 
-                <Grid RowDefinitions="180, *, Auto">
+                <Grid RowDefinitions="Auto, *, Auto">
                     <!-- Header Image -->
                     <Image Grid.Row="0"
                            Source="{Binding SelectedPoi.ImageUrl}" 
-                           Aspect="AspectFill" />
+                           Aspect="AspectFill"
+                           HeightRequest="{OnIdiom Phone=160, Tablet=240, Desktop=300}"/>
                     
-                    <BoxView Grid.Row="0" VerticalOptions="End" HeightRequest="100">
+                    <BoxView Grid.Row="0" VerticalOptions="End" HeightRequest="{OnIdiom Phone=100, Tablet=140, Desktop=180}">
                         <BoxView.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                 <GradientStop Color="Transparent" Offset="0.0" />
@@ -246,32 +247,34 @@
                            MaxLines="2" />
 
                     <!-- Details -->
-                    <VerticalStackLayout Grid.Row="1" Padding="24" Spacing="16">
-                        <Label Text="{Binding SelectedPoi.DisplayDescription}" 
-                               FontSize="16" 
-                               LineHeight="1.4"
-                               Opacity="0.8" />
-                        
-                        <HorizontalStackLayout Spacing="12">
-                            <Border StrokeShape="RoundRectangle 10" 
-                                    BackgroundColor="{AppThemeBinding Light=#FFF0E6, Dark=#2A1F16}" 
-                                    StrokeThickness="0" 
-                                    Padding="12,6">
-                                <Label Text="{Binding SelectedPoi.DisplayRadiusText}" 
-                                       FontSize="14" 
-                                       FontAttributes="Bold"
-                                       TextColor="{StaticResource Primary}" />
-                            </Border>
-                            <Border StrokeShape="RoundRectangle 10" 
-                                    BackgroundColor="{AppThemeBinding Light=#E8F8F0, Dark=#162A1F}" 
-                                    StrokeThickness="0" 
-                                    Padding="12,6">
-                                <Label Text="{local:Translate '🐚 Ốc &amp; Hải sản'}" 
-                                       FontSize="14" 
-                                       TextColor="{StaticResource AccentGreen}" />
-                            </Border>
-                        </HorizontalStackLayout>
-                    </VerticalStackLayout>
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout Padding="24" Spacing="16">
+                            <Label Text="{Binding SelectedPoi.DisplayDescription}" 
+                                   FontSize="16" 
+                                   LineHeight="1.4"
+                                   Opacity="0.8" />
+                            
+                            <FlexLayout Wrap="Wrap" Direction="Row" Margin="0,0,0,8">
+                                    <Border StrokeShape="RoundRectangle 10" 
+                                        BackgroundColor="{AppThemeBinding Light=#FFF0E6, Dark=#2A1F16}" 
+                                        StrokeThickness="0" 
+                                        Padding="12,6" Margin="0,0,12,8">
+                                    <Label Text="{Binding SelectedPoi.DisplayDistanceText}" 
+                                           FontSize="14" 
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Primary}" />
+                                </Border>
+                                <Border StrokeShape="RoundRectangle 10" 
+                                        BackgroundColor="{AppThemeBinding Light=#E8F8F0, Dark=#162A1F}" 
+                                        StrokeThickness="0" 
+                                        Padding="12,6" Margin="0,0,12,8">
+                                    <Label Text="{local:Translate '🐚 Ốc &amp; Hải sản'}" 
+                                           FontSize="14" 
+                                           TextColor="{StaticResource AccentGreen}" />
+                                </Border>
+                            </FlexLayout>
+                        </VerticalStackLayout>
+                    </ScrollView>
 
                     <!-- Actions -->
                     <Grid Grid.Row="2" ColumnDefinitions="*, *" ColumnSpacing="16" Margin="24,0,24,24">

@@ -35,6 +35,26 @@ namespace VinhKhanhTour.PageModels
             {
                 ApplyFilters(); // Refresh currently displayed items
             };
+
+            // Lắng nghe GPS liên tục
+            Geolocation.Default.LocationChanged += OnLocationChanged;
+        }
+
+        private void OnLocationChanged(object? sender, GeolocationLocationChangedEventArgs e)
+        {
+            var userLocation = e.Location;
+            if (userLocation != null)
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    foreach (var poi in _allPois)
+                    {
+                        poi.DistanceToUser = Utilities.LocationHelper.CalculateDistanceInMeters(
+                            userLocation.Latitude, userLocation.Longitude,
+                            poi.Latitude, poi.Longitude);
+                    }
+                });
+            }
         }
 
         private async Task LoadDataAsync()
@@ -127,6 +147,20 @@ namespace VinhKhanhTour.PageModels
             {
                 await RefreshAsync();
                 _isDataLoaded = true;
+            }
+
+            // Bắt đầu hoặc tiếp tục theo dõi vị trí khi trang hiển thị
+            try
+            {
+                if (!Geolocation.Default.IsListeningForeground)
+                {
+                    var request = new GeolocationListeningRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(5));
+                    await Geolocation.Default.StartListeningForegroundAsync(request);
+                }
+            }
+            catch (Exception ex)
+            {
+                _errorHandler.HandleError(ex);
             }
         }
 

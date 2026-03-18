@@ -72,12 +72,13 @@ namespace VinhKhanhTour.Services
                 int spaceIndex = englishName.IndexOf(' ');
                 var searchName = spaceIndex > 0 ? englishName.Substring(0, spaceIndex) : englishName;
 
-                // TÌM KIẾM THUẬT TOÁN THÁC NƯỚC (CASCADING) CẢI TIẾN (Đúng chuẩn, không thả lỏng để tránh lỗi nhận nhầm tiếng Anh)
+                // TÌM KIẾM THUẬT TOÁN THÁC NƯỚC (CASCADING) CẢI TIẾN
                 // 1. Khớp mã 2 chữ ("vi", "es") hoặc mã 3 chữ ("vie", "spa")
                 var selectedLocale = localesList.FirstOrDefault(l => 
                     l.Language != null && (
                         l.Language.Equals(twoLetter, StringComparison.OrdinalIgnoreCase) ||
-                        l.Language.Equals(threeLetter, StringComparison.OrdinalIgnoreCase)
+                        l.Language.Equals(threeLetter, StringComparison.OrdinalIgnoreCase) ||
+                        l.Language.Equals(currentCode, StringComparison.OrdinalIgnoreCase)
                     ));
 
                 // 2. Khớp chuỗi bắt đầu mã Language hợp lệ (VD: "vi-VN", "es-ES", "zh-CN")
@@ -86,13 +87,21 @@ namespace VinhKhanhTour.Services
                         l.Language.StartsWith(twoLetter + "-", StringComparison.OrdinalIgnoreCase) || 
                         l.Language.StartsWith(twoLetter + "_", StringComparison.OrdinalIgnoreCase) ||
                         l.Language.StartsWith(threeLetter + "-", StringComparison.OrdinalIgnoreCase) ||
-                        l.Language.StartsWith(threeLetter + "_", StringComparison.OrdinalIgnoreCase)
+                        l.Language.StartsWith(threeLetter + "_", StringComparison.OrdinalIgnoreCase) ||
+                        l.Language.StartsWith(currentCode + "-", StringComparison.OrdinalIgnoreCase) ||
+                        l.Language.StartsWith(currentCode + "_", StringComparison.OrdinalIgnoreCase)
                     )
                 );
 
                 // 3. Khớp tên tiếng Anh (VD: "Vietnamese", "Spanish", "Japanese")
+                // Google Speech Services thường có tên kiểu "Vietnamese (Vietnam)"
                 selectedLocale ??= localesList.FirstOrDefault(l => 
                     l.Name != null && l.Name.Contains(searchName, StringComparison.OrdinalIgnoreCase)
+                );
+
+                // 4. Fallback đặc biệt cho Hindi và các ngôn ngữ khi Google trả về ID đặc biệt
+                selectedLocale ??= localesList.FirstOrDefault(l =>
+                    l.Id != null && l.Id.Contains(twoLetter, StringComparison.OrdinalIgnoreCase)
                 );
 
                 if (selectedLocale != null)

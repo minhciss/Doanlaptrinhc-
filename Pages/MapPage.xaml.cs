@@ -54,8 +54,11 @@ namespace VinhKhanhTour.Pages
             // OnNavigatedTo được gọi SAU KHI animation chuyển trang đã hoàn tất hoàn toàn.
             if (!_isMapLoaded)
             {
-                LoadPoisToMap();
-                _isMapLoaded = true;
+                MainThread.BeginInvokeOnMainThread(async () => 
+                {
+                    await LoadPoisToMapAsync();
+                    _isMapLoaded = true;
+                });
             }
             
             // Đợi thêm 1 chút để UI bản đồ kịp render mượt mà trước khi gọi hộp thoại Quyền GPS
@@ -214,96 +217,109 @@ namespace VinhKhanhTour.Pages
 #endif
         }
 
-        private bool _isPlaying = false;
+        private bool _isPlaying = true;
         private void OnPlayPauseClicked(object sender, EventArgs e)
         {
             _isPlaying = !_isPlaying;
-            PlayPauseButton.Text = _isPlaying ? "⏸" : "▶";
+            UpdatePlayPauseButton(true);
+        }
+
+        private void UpdatePlayPauseButton(bool triggerCancelOnPause = false)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                PlayPauseButton.Text = _isPlaying ? "⏸" : "▶";
+            });
             
-            if (!_isPlaying)
+            if (triggerCancelOnPause && !_isPlaying)
             {
                 _narrationEngine.CancelCurrentNarration();
             }
         }
 
-        private async void Geolocation_LocationChanged(object sender, GeolocationLocationChangedEventArgs e)
+        private void Geolocation_LocationChanged(object sender, GeolocationLocationChangedEventArgs e)
         {
             _currentUserLocation = e.Location;
-            var pois = Poi.GetSampleData(); 
-
-            // Tìm quán ốc gần nhất trong bán kính kích hoạt
-            Poi? nearestTriggeredPoi = null;
-            double minDistance = double.MaxValue;
-            double nearestDistance = double.MaxValue;
-            string closestPoiName = Services.LocalizationResourceManager.Instance["Chưa tìm thấy quán ốc"];
-
-            foreach (var poi in pois)
+            
+            // Xử lý tính toán ngầm trên CPU khác, không làm treo giao diện (Background Thread)
+            Task.Run(async () => 
             {
-                double distanceToPoi = LocationHelper.CalculateDistanceInMeters(
-                    _currentUserLocation.Latitude, _currentUserLocation.Longitude,
-                    poi.Latitude, poi.Longitude);
+                var pois = Poi.GetSampleData(); 
 
-                if (distanceToPoi < nearestDistance)
-                {
-                    nearestDistance = distanceToPoi;
-                    closestPoiName = poi.Name;
-                }
+                // Tìm quán ốc gần nhất trong bán kính kích hoạt
+                Poi? nearestTriggeredPoi = null;
+                double minDistance = double.MaxValue;
+                double nearestDistance = double.MaxValue;
+                string closestPoiName = Services.LocalizationResourceManager.Instance["Chưa tìm thấy quán ốc"];
 
-                if (distanceToPoi <= poi.Radius)
+                foreach (var poi in pois)
                 {
-                    if (distanceToPoi < minDistance || 
-                        (distanceToPoi == minDistance && (nearestTriggeredPoi == null || poi.Priority > nearestTriggeredPoi.Priority)))
+                    double distanceToPoi = LocationHelper.CalculateDistanceInMeters(
+                        _currentUserLocation.Latitude, _currentUserLocation.Longitude,
+                        poi.Latitude, poi.Longitude);
+
+                    if (distanceToPoi < nearestDistance)
                     {
-                        nearestTriggeredPoi = poi;
-                        minDistance = distanceToPoi;
+                        nearestDistance = distanceToPoi;
+                        closestPoiName = poi.Name;
+                    }
+
+                    if (distanceToPoi <= poi.Radius)
+                    {
+                        if (distanceToPoi < minDistance || 
+                            (distanceToPoi == minDistance && (nearestTriggeredPoi == null || poi.Priority > nearestTriggeredPoi.Priority)))
+                        {
+                            nearestTriggeredPoi = poi;
+                            minDistance = distanceToPoi;
+                        }
                     }
                 }
-            }
 
-            // Cập nhật giao diện chuyên nghiệp
-            MainThread.BeginInvokeOnMainThread(() => 
-            {
-                DebugLabel.Text = $"GPS: {_currentUserLocation.Latitude:F5}, {_currentUserLocation.Longitude:F5}";
-                DistanceLabel.Text = $"{Services.LocalizationResourceManager.Instance["Cách quán gần nhất"]}: {nearestDistance:F0}m";
-                
-                if (nearestTriggeredPoi != null)
+                // Quay lại UI Thread để cập nhật giao diện sau khi tính toán xong
+                MainThread.BeginInvokeOnMainThread(async () => 
                 {
-                    PoiNameLabel.Text = nearestTriggeredPoi.Name;
-                }
-                else
-                {
-                    PoiNameLabel.Text = closestPoiName;
-                }
+                    DebugLabel.Text = $"GPS: {_currentUserLocation.Latitude:F5}, {_currentUserLocation.Longitude:F5}";
+                    DistanceLabel.Text = $"{Services.LocalizationResourceManager.Instance["Cách quán gần nhất"]}: {nearestDistance:F0}m";
+                    
+                    if (nearestTriggeredPoi != null)
+                    {
+                        PoiNameLabel.Text = nearestTriggeredPoi.Name;
+                    }
+                    else
+                    {
+                        PoiNameLabel.Text = closestPoiName;
+                    }
+
+                    if (nearestTriggeredPoi != null)
+                    {
+                        Debug.WriteLine($"[Geofence] Đã rơi vào bán kính quán: {nearestTriggeredPoi.Name} ({minDistance}m)");
+                        
+                        // Gọi Động cơ Thuyết minh (Narration Engine)
+                        if (_isPlaying)
+                        {
+                            _playingPoiId = nearestTriggeredPoi.Id;
+                            UpdateMapCirclesState();
+                            await _narrationEngine.PlayPoiNarrationAsync(nearestTriggeredPoi);
+                        }
+                        else
+                        {
+                            _playingPoiId = 0;
+                            UpdateMapCirclesState();
+                        }
+                    }
+                    else
+                    {
+                        if (_playingPoiId != 0)
+                        {
+                            _playingPoiId = 0;
+                            UpdateMapCirclesState();
+                        }
+                    }
+                });
             });
-
-            if (nearestTriggeredPoi != null)
-            {
-                Debug.WriteLine($"[Geofence] Đã rơi vào bán kính quán: {nearestTriggeredPoi.Name} ({minDistance}m)");
-                
-                // Gọi Động cơ Thuyết minh (Narration Engine)
-                if (_isPlaying)
-                {
-                    _playingPoiId = nearestTriggeredPoi.Id;
-                    MainThread.BeginInvokeOnMainThread(() => UpdateMapCirclesState());
-                    await _narrationEngine.PlayPoiNarrationAsync(nearestTriggeredPoi);
-                }
-                else
-                {
-                    _playingPoiId = 0;
-                    MainThread.BeginInvokeOnMainThread(() => UpdateMapCirclesState());
-                }
-            }
-            else
-            {
-                if (_playingPoiId != 0)
-                {
-                    _playingPoiId = 0;
-                    MainThread.BeginInvokeOnMainThread(() => UpdateMapCirclesState());
-                }
-            }
         }
 
-        private void LoadPoisToMap()
+        private async Task LoadPoisToMapAsync()
         {
 #if ANDROID || IOS || MACCATALYST
             VinhKhanhMap = new Microsoft.Maui.Controls.Maps.Map
@@ -316,9 +332,11 @@ namespace VinhKhanhTour.Pages
             // 1. Get 5 sample snail places
             var poiList = Poi.GetSampleData();
 
-            // 2. Loop through and create a Pin for each POI
             foreach (var poi in poiList)
             {
+                // Nhường luồng xử lý UI lâu hơn (50ms) giữa mỗi lần đính ghim (giúp Frame Rate mượt mờ hơn hẳn)
+                await Task.Delay(50); 
+
                 var pin = new Pin
                 {
                     Label = poi.DisplayName,
@@ -326,6 +344,9 @@ namespace VinhKhanhTour.Pages
                     Type = PinType.Place,
                     Location = new Location(poi.Latitude, poi.Longitude)
                 };
+
+                // Hook up click event (Reverted)
+                // Default pin behavior will just show tooltip or bold the label if requested by user
 
                 // Add to Map's Pins collection
                 VinhKhanhMap.Pins.Add(pin);
@@ -347,7 +368,7 @@ namespace VinhKhanhTour.Pages
 #else
             MapContainer.Children.Add(new Label 
             {
-                Text = "Bản đồ không được hỗ trợ trên Windows. Vui lòng chạy ứng dụng trên thiết bị Android hoặc iOS.",
+                Text = "Bản đồ không khả dụng trên nền tảng này.",
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
                 HorizontalTextAlignment = TextAlignment.Center,

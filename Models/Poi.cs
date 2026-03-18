@@ -1,8 +1,9 @@
 using SQLite;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace VinhKhanhTour.Models
 {
-    public class Poi
+    public partial class Poi : ObservableObject
     {
         [PrimaryKey, AutoIncrement]
         public int Id { get; set; }
@@ -22,6 +23,19 @@ namespace VinhKhanhTour.Models
 
         [Ignore]
         public string DisplayImage => string.IsNullOrWhiteSpace(ImageUrl) ? "poi_placeholder.png" : ImageUrl;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(DisplayDistanceText))]
+        [NotifyPropertyChangedFor(nameof(ListDisplayDistanceText))]
+        private double? _distanceToUser;
+
+        [Ignore]
+        public string DisplayDistanceText => DistanceToUser.HasValue 
+            ? $"📍 {Services.LocalizationResourceManager.Instance["Cách bạn"]}: {DistanceToUser.Value:F0}m" 
+            : $"📍 {Services.LocalizationResourceManager.Instance["Đang định vị..."]}";
+
+        [Ignore]
+        public string ListDisplayDistanceText => DistanceToUser.HasValue ? $"📍 {DistanceToUser.Value:F0}m" : "📍 ---";
 
         [Ignore]
         public string DisplayRadiusText => $"📏 {Services.LocalizationResourceManager.Instance["Bán kính"]}: {Radius}m";
@@ -310,8 +324,8 @@ namespace VinhKhanhTour.Models
                     Description = "Sushi Nhật Bản chất lượng trên vỉa hè Sài Gòn. Cá hồi tươi, cơm dẻo, giá mềm.",
                     DescriptionEn = "Quality Japanese sushi on Saigon sidewalk. Fresh salmon, sticky rice, soft prices.",
                     DescriptionEs = "Sushi japonés de calidad en la acera de Saigón. Salmón fresco, arroz pegajoso, precios suaves.", DescriptionFr = "Sushi japonais de qualité sur le trottoir de Saigon. Saumon frais, riz gluant, prix doux.", DescriptionDe = "Qualitativ hochwertiges japanisches Sushi auf dem Bürgersteig von Saigon. Frischer Lachs, klebriger Reis, sanfte Preise.", DescriptionZh = "西贡街头优质的日本寿司。新鲜鲑鱼，糯米饭，价格温柔。", DescriptionJa = "サイゴンの歩道の高品質な日本の寿司。新鮮な鮭、もち米、ソフトな価格。", DescriptionKo = "사이공 거리의 고품질 일본 초밥. 신선한 연어, 찹쌀, 부드러운 가격.", DescriptionRu = "Качественные японские суши на тротуаре Сайгона. Свежий лосось, клейкий рис, низкие цены.", DescriptionIt = "Sushi giapponese di qualità sul marciapiede di Saigon. Salmone fresco, riso appiccicoso, prezzi bassi.", DescriptionPt = "Sushi japonês de qualidade na calçada de Saigon. Salmão fresco, arroz pegajoso, preços baixos.", DescriptionHi = "سوشي ياباني عالي الجودة على رصيف سيغون. سلمون طازج وأرز لزج وأسعار معتدلة.",
-                    Latitude = 10.75529,
-                    Longitude = 106.70122,
+                    Latitude = 10.76166,
+                    Longitude = 106.70240,
                     Radius = 30,
                     TtsScript = "Sushi Cô Bông ở ngay số 390. Thêm một lựa chọn Nhật Bản tuyệt vời trên phố Vĩnh Khánh.",
                     TtsScriptEn = "Co Bong Sushi right at 390. Another great Japanese choice on Vinh Khanh street.",

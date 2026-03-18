@@ -2,6 +2,8 @@ namespace VinhKhanhTour.Pages;
 
 public partial class SettingsPage : ContentPage
 {
+    private bool _isInitializing = true;
+
     public SettingsPage()
     {
         InitializeComponent();
@@ -26,10 +28,13 @@ public partial class SettingsPage : ContentPage
             "hi" => 11,
             _ => 0
         };
+
+        _isInitializing = false;
     }
 
     private void OnLanguageChanged(object sender, EventArgs e)
     {
+        if (_isInitializing) return;
         if (LanguagePicker.SelectedIndex == -1) return;
         
         string selectedLang = LanguagePicker.SelectedIndex switch
@@ -70,8 +75,14 @@ public partial class SettingsPage : ContentPage
         // Chỉnh sửa runtime
         Services.LocalizationResourceManager.Instance.SetCulture(new System.Globalization.CultureInfo(cultureString));
 
-        // Cập nhật lại Text cho Label Tốc độ (nếu cần)
-        UpdateSpeechRateLabel(SpeechRateSlider.Value);
+        // Buộc tải lại toàn bộ Ứng dụng để Áp dụng Ngôn ngữ mới trọn vẹn
+        if (Application.Current != null)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                Application.Current.MainPage = new AppShell();
+            });
+        }
     }
 
     private void OnThemeSwitchToggled(object sender, ToggledEventArgs e)
