@@ -96,15 +96,28 @@ namespace VinhKhanhTour.Platforms.Android
         public static Microsoft.Maui.Devices.Sensors.Location? CurrentLocation { get; set; }
         public static event EventHandler<Microsoft.Maui.Devices.Sensors.Location>? LocationChanged;
 
+        // Cache POIs để tránh gọi DB mỗi lần location update
+        private static List<Poi>? _cachedPois;
+
         public static async Task CheckGeofences(Microsoft.Maui.Devices.Sensors.Location userLocation)
         {
             LocationChanged?.Invoke(null, userLocation);
 
-            var engine = IPlatformApplication.Current?.Services.GetService<NarrationEngine>();
+            var services = IPlatformApplication.Current?.Services;
+            if (services == null) return;
+
+            var engine = services.GetService<NarrationEngine>();
             if (engine == null) return;
 
-            var pois = Poi.GetSampleData();
-            foreach (var poi in pois)
+            // Tải POIs từ Repository lần đầu, sau đó dùng cache
+            if (_cachedPois == null)
+            {
+                var repository = services.GetService<PoiRepository>();
+                if (repository == null) return;
+                _cachedPois = await repository.GetAllPoisAsync();
+            }
+
+            foreach (var poi in _cachedPois)
             {
                 double distance = LocationHelper.CalculateDistanceInMeters(
                     userLocation.Latitude, userLocation.Longitude,

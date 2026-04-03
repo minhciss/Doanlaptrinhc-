@@ -11,6 +11,8 @@ namespace VinhKhanhTour.Pages
     public partial class MapPage : ContentPage
     {
         private readonly NarrationEngine _narrationEngine;
+        private readonly PoiRepository _poiRepository;
+        private List<Poi> _cachedPois = new();
         private bool _isTrackingLocation = false;
 
         private int _selectedPoiId = 0;
@@ -31,20 +33,26 @@ namespace VinhKhanhTour.Pages
             }
         }
 
-        private int _playingPoiId = 0; // Thêm ID quán đang phát thuyết minh
+        private int _playingPoiId = 0;
+
+        // ===== SIMULATION MODE =====
+        private bool _isSimulationMode = false;
+        private Location? _simulatedLocation;
+        private const double SimStepDegrees = 0.00009; // ~10 mét mỗi lần bấm
 
 #if ANDROID || IOS || MACCATALYST
         private Microsoft.Maui.Controls.Maps.Map VinhKhanhMap;
         private Dictionary<int, Microsoft.Maui.Controls.Maps.Circle> _poiCircles = new();
+        private Pin? _simulatedPin;
 #endif
 
         private bool _isMapLoaded = false;
 
-        public MapPage(NarrationEngine narrationEngine)
+        public MapPage(NarrationEngine narrationEngine, PoiRepository poiRepository)
         {
             InitializeComponent();
             _narrationEngine = narrationEngine;
-            // Removed LoadPoisToMap() here to prevent blocking the UI during page construction 
+            _poiRepository = poiRepository;
         }
 
         protected override void OnNavigatedTo(NavigatedToEventArgs args)
@@ -124,6 +132,7 @@ namespace VinhKhanhTour.Pages
 
         private void OnBackgroundLocationChanged(object? sender, Location location)
         {
+            if (_isSimulationMode) return; // Bỏ qua GPS thật khi đang minh họa
             MainThread.BeginInvokeOnMainThread(() => 
             {
                 Geolocation_LocationChanged(this, new GeolocationLocationChangedEventArgs(location));
@@ -152,6 +161,7 @@ namespace VinhKhanhTour.Pages
 
         private async Task CheckLocation()
         {
+            if (_isSimulationMode) return; // Bỏ qua GPS thật khi đang minh họa
             try
             {
                 // Bắt buộc Không sử dụng Vị trí đệm (Cache) trên Android Emulator
@@ -244,7 +254,9 @@ namespace VinhKhanhTour.Pages
             // Xử lý tính toán ngầm trên CPU khác, không làm treo giao diện (Background Thread)
             Task.Run(async () => 
             {
-                var pois = Poi.GetSampleData(); 
+                // Dùng _cachedPois đã tải từ Repository, tránh tạo lại object mỗi lần GPS update
+                var pois = _cachedPois;
+                if (pois.Count == 0) return;
 
                 // Tìm quán ốc gần nhất trong bán kính kích hoạt
                 Poi? nearestTriggeredPoi = null;
@@ -321,7 +333,16 @@ namespace VinhKhanhTour.Pages
 
         private async Task LoadPoisToMapAsync()
         {
+            // Tải POI từ Repository cho mọi nền tảng (phải nằm ngoài #if)
+            _cachedPois = await _poiRepository.GetAllPoisAsync();
+
 #if ANDROID || IOS || MACCATALYST
+            if (_cachedPois.Count == 0)
+            {
+                Debug.WriteLine("[MapPage] Không có POI nào trong repository.");
+                return;
+            }
+
             VinhKhanhMap = new Microsoft.Maui.Controls.Maps.Map
             {
                 IsShowingUser = true,
@@ -329,12 +350,9 @@ namespace VinhKhanhTour.Pages
             };
             MapContainer.Children.Add(VinhKhanhMap);
 
-            // 1. Get 5 sample snail places
-            var poiList = Poi.GetSampleData();
-
-            foreach (var poi in poiList)
+            foreach (var poi in _cachedPois)
             {
-                // Nhường luồng xử lý UI lâu hơn (50ms) giữa mỗi lần đính ghim (giúp Frame Rate mượt mờ hơn hẳn)
+                // Nhường luồng xử lý UI (50ms) giữa mỗi lần đính ghim
                 await Task.Delay(50); 
 
                 var pin = new Pin
@@ -345,17 +363,13 @@ namespace VinhKhanhTour.Pages
                     Location = new Location(poi.Latitude, poi.Longitude)
                 };
 
-                // Hook up click event (Reverted)
-                // Default pin behavior will just show tooltip or bold the label if requested by user
-
-                // Add to Map's Pins collection
                 VinhKhanhMap.Pins.Add(pin);
 
                 var circle = new Microsoft.Maui.Controls.Maps.Circle
                 {
                     Center = new Location(poi.Latitude, poi.Longitude),
                     Radius = Distance.FromMeters(poi.Radius),
-                    StrokeColor = Color.FromArgb("#808080"), // Xám mặc định
+                    StrokeColor = Color.FromArgb("#808080"),
                     StrokeWidth = 2,
                     FillColor = Color.FromRgba(128, 128, 128, 50)
                 };
@@ -366,6 +380,8 @@ namespace VinhKhanhTour.Pages
             UpdateMapCirclesState();
             CenterOnSelectedPoi();
 #else
+            if (_cachedPois.Count == 0)
+                Debug.WriteLine("[MapPage] Không có POI nào trong repository.");
             MapContainer.Children.Add(new Label 
             {
                 Text = "Bản đồ không khả dụng trên nền tảng này.",
@@ -411,7 +427,8 @@ namespace VinhKhanhTour.Pages
         {
 #if ANDROID || IOS || MACCATALYST
             if (VinhKhanhMap == null) return;
-            var poiList = Poi.GetSampleData();
+            // Dùng _cachedPois thay vì tạo lại GetSampleData()
+            var poiList = _cachedPois;
             Poi? targetPoi = null;
             
             if (_selectedPoiId > 0)
@@ -441,5 +458,133 @@ namespace VinhKhanhTour.Pages
             }
 #endif
         }
+
+        // =================== SIMULATION MODE METHODS ===================
+
+        private void OnDemoModeToggled(object sender, EventArgs e)
+        {
+            _isSimulationMode = !_isSimulationMode;
+            DPadPanel.IsVisible = _isSimulationMode;
+
+            if (_isSimulationMode)
+            {
+                DemoModeButton.Text = "🛑";
+                DemoModeButton.BackgroundColor = Color.FromArgb("#FF6B35");
+                DemoModeButton.TextColor = Colors.White;
+                _simulatedLocation = new Location(10.76140, 106.70270);
+
+                // Nếu cache chưa được tải (demo bật trước khi map load xong), tải người dùng nửa
+                if (_cachedPois.Count == 0)
+                {
+                    Task.Run(async () =>
+                    {
+                        _cachedPois = await _poiRepository.GetAllPoisAsync();
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+#if ANDROID || IOS || MACCATALYST
+                            AddSimulatedPin();
+#endif
+                            ProcessSimulatedLocation();
+                        });
+                    });
+                    return;
+                }
+
+#if ANDROID || IOS || MACCATALYST
+                AddSimulatedPin();
+#endif
+                ProcessSimulatedLocation();
+            }
+            else
+            {
+                DemoModeButton.Text = "🎮";
+                bool isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
+                DemoModeButton.BackgroundColor = isDark ? Color.FromArgb("#2A2A2A") : Colors.White;
+                DemoModeButton.TextColor = Color.FromArgb("#FF6B35");
+#if ANDROID || IOS || MACCATALYST
+                RemoveSimulatedPin();
+#endif
+                _simulatedLocation = null;
+                DebugLabel.Text = Services.LocalizationResourceManager.Instance["Đang tìm kiếm vệ tinh GPS..."];
+            }
+        }
+
+        private void OnMoveUp(object sender, EventArgs e)    => SimulateMove(SimStepDegrees, 0);
+        private void OnMoveDown(object sender, EventArgs e)  => SimulateMove(-SimStepDegrees, 0);
+        private void OnMoveLeft(object sender, EventArgs e)  => SimulateMove(0, -SimStepDegrees);
+        private void OnMoveRight(object sender, EventArgs e) => SimulateMove(0, SimStepDegrees);
+
+        private void OnResetSimulation(object sender, EventArgs e)
+        {
+            _simulatedLocation = new Location(10.76140, 106.70270);
+#if ANDROID || IOS || MACCATALYST
+            UpdateSimulatedPin();
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (VinhKhanhMap != null)
+                    VinhKhanhMap.MoveToRegion(MapSpan.FromCenterAndRadius(_simulatedLocation, Distance.FromKilometers(0.5)));
+            });
+#endif
+            ProcessSimulatedLocation();
+        }
+
+        private void SimulateMove(double latDelta, double lonDelta)
+        {
+            if (!_isSimulationMode || _simulatedLocation == null) return;
+
+            _simulatedLocation = new Location(
+                _simulatedLocation.Latitude + latDelta,
+                _simulatedLocation.Longitude + lonDelta);
+
+#if ANDROID || IOS || MACCATALYST
+            UpdateSimulatedPin();
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                if (VinhKhanhMap != null)
+                    VinhKhanhMap.MoveToRegion(MapSpan.FromCenterAndRadius(_simulatedLocation, Distance.FromKilometers(0.3)));
+            });
+#endif
+            ProcessSimulatedLocation();
+        }
+
+        private void ProcessSimulatedLocation()
+        {
+            if (_simulatedLocation == null) return;
+            Geolocation_LocationChanged(this, new GeolocationLocationChangedEventArgs(_simulatedLocation));
+        }
+
+#if ANDROID || IOS || MACCATALYST
+        private void AddSimulatedPin()
+        {
+            if (VinhKhanhMap == null || _simulatedLocation == null) return;
+            _simulatedPin = new Pin
+            {
+                Label = "📍 Vị trí của bạn (Demo)",
+                Type = PinType.Generic,
+                Location = _simulatedLocation
+            };
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                VinhKhanhMap.Pins.Add(_simulatedPin);
+                VinhKhanhMap.MoveToRegion(MapSpan.FromCenterAndRadius(_simulatedLocation, Distance.FromKilometers(0.5)));
+            });
+        }
+
+        private void UpdateSimulatedPin()
+        {
+            if (_simulatedPin == null || _simulatedLocation == null) return;
+            MainThread.BeginInvokeOnMainThread(() => _simulatedPin.Location = _simulatedLocation);
+        }
+
+        private void RemoveSimulatedPin()
+        {
+            if (_simulatedPin == null || VinhKhanhMap == null) return;
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                VinhKhanhMap.Pins.Remove(_simulatedPin);
+                _simulatedPin = null;
+            });
+        }
+#endif
     }
 }

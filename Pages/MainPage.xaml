@@ -4,8 +4,7 @@
              xmlns:models="clr-namespace:VinhKhanhTour.Models"
              xmlns:pageModels="clr-namespace:VinhKhanhTour.PageModels"
              xmlns:local="clr-namespace:VinhKhanhTour.MarkupExtensions"
-             x:Class="VinhKhanhTour.Pages.MainPage"
-             Title="{local:Translate 'Khám phá Ẩm thực'}"
+             x:Class="VinhKhanhTour.Pages.MainPage"      
              BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
 
     <Grid>
@@ -15,7 +14,7 @@
                 
                 <!-- 🍊 Hero Banner with warm gradient -->
                 <Grid HeightRequest="{OnIdiom Phone=240, Tablet=320, Desktop=360}">
-                    <Image Source="vinh_khanh_food_street_banner.jpg" 
+                        <Image Source="pho_am_thuc_q4.jpg" 
                            Aspect="AspectFill" />
                     <BoxView>
                         <BoxView.Background>
@@ -26,11 +25,10 @@
                             </LinearGradientBrush>
                         </BoxView.Background>
                     </BoxView>
-                    
-                    <VerticalStackLayout VerticalOptions="End" Padding="24,24,24,28">
-                        <Label Text="🦀" FontSize="36" Margin="0,0,0,4" />
-                        <Label Text="Vĩnh Khánh" FontSize="40" FontAttributes="Bold" TextColor="White" />
-                        <Label Text="{local:Translate 'Thiên đường Ốc Sài Gòn — Quận 4'}" FontSize="16" TextColor="#E0E0E0" Margin="0,4,0,0" />
+
+                        <VerticalStackLayout VerticalOptions="End" Padding="24,24,24,28">
+                            <Label Text="Vĩnh Khánh" FontSize="40" FontAttributes="Bold" TextColor="White" />
+                            <Label Text="{local:Translate 'Trải nghiệm quán ăn ngon — Quận 4'}" FontSize="16" TextColor="#E0E0E0" Margin="0,4,0,0" />
                     </VerticalStackLayout>
                 </Grid>
 
@@ -41,7 +39,7 @@
                             Padding="4,0" 
                             StrokeThickness="1" 
                             Stroke="{AppThemeBinding Light=#E8D5C8, Dark=#444444}"
-                            BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                            BackgroundColor="{AppThemeBinding Light=#F7F7F7, Dark=#1E1E1E}">
                         <Border.Shadow>
                             <Shadow Brush="Black" Opacity="0.06" Offset="0,2" Radius="8" />
                         </Border.Shadow>
@@ -55,44 +53,24 @@
                                SearchCommandParameter="{Binding Source={x:Reference PoiSearchBar}, Path=Text}"/>
                     </Border>
 
-                    <!-- 🏷️ Filter Chips -->
-                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
-                        <HorizontalStackLayout Spacing="10">
-                            <Button Text="{local:Translate '🔥 Tất cả'}" 
-                                    Style="{StaticResource FilterButtonStyle}" 
-                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Tất cả'}"/>
-                            <Button Text="{local:Translate '🐚 Ốc &amp; Hải sản'}" 
-                                    Style="{StaticResource FilterButtonStyleSecondary}" 
-                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Ốc &amp; Hải sản'}"/>
-                            <Button Text="{local:Translate '🍖 Đồ nướng'}" 
-                                    Style="{StaticResource FilterButtonStyleSecondary}" 
-                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Đồ nướng'}"/>
-                            <Button Text="{local:Translate '🍜 Món nước'}" 
-                                    Style="{StaticResource FilterButtonStyleSecondary}" 
-                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Món nước'}"/>
-                            <Button Text="{local:Translate '🍣 Sushi'}" 
-                                    Style="{StaticResource FilterButtonStyleSecondary}" 
-                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Sushi'}"/>
-                        </HorizontalStackLayout>
-                    </ScrollView>
-
+                  
                     <!-- 🚀 Start Tour CTA Button -->
                     <Border StrokeShape="RoundRectangle 28" StrokeThickness="0" Padding="0" HeightRequest="56">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#FF6B35" Offset="0.0" />
-                                <GradientStop Color="#FF8F5E" Offset="1.0" />
+                                    <GradientStop Color="#FFB300" Offset="0.0" />
+                                    <GradientStop Color="#FFB300" Offset="1.0" />
                             </LinearGradientBrush>
                         </Border.Background>
                         <Border.Shadow>
-                            <Shadow Brush="#FF6B35" Opacity="0.3" Offset="0,6" Radius="16" />
+                                <Shadow Brush="#FFB300" Opacity="0.3" Offset="0,6" Radius="16" />
                         </Border.Shadow>
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding StartTourCommand}" />
                         </Border.GestureRecognizers>
                         <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
                             <Label Text="🗺️" FontSize="22" VerticalOptions="Center" />
-                            <Label Text="{local:Translate 'Bắt Đầu Tour Ngay'}" FontSize="18" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
+                            <Label Text="{local:Translate 'Bắt Đầu Ngay'}" FontSize="18" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
                             <Label Text="→" FontSize="22" TextColor="White" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                     </Border>
@@ -107,8 +85,9 @@
                     <CollectionView x:Name="PoiCollectionView" ItemsSource="{Binding Pois}" SelectionMode="Single" SelectionChanged="OnPoiSelectionChanged">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="models:Poi">
-                                <Border StrokeShape="RoundRectangle 16" 
-                                        StrokeThickness="0"
+                                    <Border StrokeShape="RoundRectangle 16" 
+     Stroke="{AppThemeBinding Light=#DDDDDD, Dark=#444444}"
+StrokeThickness="2.5"
                                         BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}"
                                         Margin="0,0,0,16" 
                                         Padding="0">
@@ -164,7 +143,7 @@
                                                         BackgroundColor="{AppThemeBinding Light=#E8F8F0, Dark=#162A1F}" 
                                                         StrokeThickness="0" 
                                                         Padding="8,4" Margin="0,0,12,0">
-                                                    <Label Text="{local:Translate '🐚 Ốc'}" 
+                                                        <Label Text="{local:Translate '🔥 Nên thử'}" 
                                                            FontSize="12" 
                                                            TextColor="{StaticResource AccentGreen}" />
                                                 </Border>
@@ -179,7 +158,7 @@
                             
                 </VerticalStackLayout>
             </VerticalStackLayout>
-        </ScrollView>
+        </ScrollView> 
         </RefreshView>
 
         <!-- The Detail Overlay (BottomSheet Template) -->
@@ -268,7 +247,7 @@
                                         BackgroundColor="{AppThemeBinding Light=#E8F8F0, Dark=#162A1F}" 
                                         StrokeThickness="0" 
                                         Padding="12,6" Margin="0,0,12,8">
-                                    <Label Text="{local:Translate '🐚 Ốc &amp; Hải sản'}" 
+                                    <Label Text="{local:Translate '👥 Hợp đi theo nhóm'}" 
                                            FontSize="14" 
                                            TextColor="{StaticResource AccentGreen}" />
                                 </Border>
@@ -286,18 +265,18 @@
                                 HeightRequest="56">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Color="#4A90E2" Offset="0.0" />
-                                    <GradientStop Color="#007AFF" Offset="1.0" />
+                                    <GradientStop Color="#FFB300" Offset="0.0" />
+                                    <GradientStop Color="#FFB300" Offset="1.0" />
                                 </LinearGradientBrush>
                             </Border.Background>
                             <Border.Shadow>
-                                <Shadow Brush="#007AFF" Opacity="0.3" Offset="0,6" Radius="16" />
+                                <Shadow Brush="#FFB300" Opacity="0.3" Offset="0,6" Radius="16" />
                             </Border.Shadow>
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding PlayNarrationCommand}" />
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
-                                <Label Text="▶️" FontSize="18" VerticalOptions="Center" />
+                                <Label Text="⏯️" FontSize="18" VerticalOptions="Center" />
                                 <Label Text="{local:Translate 'Nghe Audio'}" FontSize="16" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
                             </HorizontalStackLayout>
                         </Border>
@@ -310,12 +289,12 @@
                                 HeightRequest="56">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Color="#FF6B35" Offset="0.0" />
-                                    <GradientStop Color="#FF8F5E" Offset="1.0" />
+                                    <GradientStop Color="#FF5722" Offset="0.0" />
+                                    <GradientStop Color="#FF5722" Offset="1.0" />
                                 </LinearGradientBrush>
                             </Border.Background>
                             <Border.Shadow>
-                                <Shadow Brush="#FF6B35" Opacity="0.3" Offset="0,6" Radius="16" />
+                                <Shadow Brush="#FF5722" Opacity="0.3" Offset="0,6" Radius="16" />
                             </Border.Shadow>
                             <Border.GestureRecognizers>
                                 <TapGestureRecognizer Command="{Binding NavigateToMapCommand}" />

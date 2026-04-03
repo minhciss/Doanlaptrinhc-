@@ -8,8 +8,7 @@ public partial class SettingsPage : ContentPage
     {
         InitializeComponent();
         
-        // Khởi tạo trạng thái ban đầu của Switch dựa trên Theme hiện tại
-        ThemeSwitch.IsToggled = Application.Current?.RequestedTheme == AppTheme.Dark;
+    
         
         // Khởi tạo ngôn ngữ LanguagePicker
         var currentLang = Services.LocalizationResourceManager.Instance.CurrentLanguageCode;
@@ -85,13 +84,7 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private void OnThemeSwitchToggled(object sender, ToggledEventArgs e)
-    {
-        if (Application.Current != null)
-        {
-            Application.Current.UserAppTheme = e.Value ? AppTheme.Dark : AppTheme.Light;
-        }
-    }
+
 
     private void OnSpeechRateChanged(object sender, ValueChangedEventArgs e)
     {
