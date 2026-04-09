@@ -1,0 +1,21 @@
+﻿@model VinhKhanhadmin.Models.Poi
+
+<h2>@Model.Name</h2>
+
+<p>@Model.Description</p>
+
+<img src="@Model.ImageUrl" style="max-width:300px" />
+
+<hr />
+
+<h3>🎧 Audio</h3>
+
+<audio controls>
+    <source src="http://192.168.1.11:5137/audio/yourfile.mp3" type="audio/mpeg" />
+</audio>
+
+<hr />
+
+<h3>📱 QR Code</h3>
+
+<img src="/Poi/Qr?url=http://192.168.1.11:7170/Public/Poi/@Model.Id" />

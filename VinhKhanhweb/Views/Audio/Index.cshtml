@@ -1,0 +1,38 @@
+﻿@model List<PoiTranslation>
+<div class="d-flex justify-content-between mb-3">
+
+    <form method="get" action="/Audio">
+        <input type="number" name="poiId" value="@ViewBag.PoiId" />
+        <button type="submit">Tải</button>
+    </form>
+
+    <form method="post" action="/Audio/Generate">
+        <input type="hidden" name="poiId" value="@ViewBag.PoiId" />
+        <button class="btn btn-success">+ Tạo Audio</button>
+    </form>
+</div>
+<h3>🎧 Quản lý Audio</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>POI</th>
+            <th>Ngôn ngữ</th>
+            <th>Tiêu đề</th>
+            <th>Audio</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var t in Model)
+        {
+            <tr>
+                <td>@t.PoiId</td>
+                <td>@t.LanguageCode</td>
+                <td>@t.Title</td>
+                <td>
+                    <audio controls src="@t.AudioUrl"></audio>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,79 @@
+﻿@model VinhKhanhadmin.Models.Poi
+
+<h2 class="mb-3">✏ Sửa POI</h2>
+
+<form method="post" class="card p-4 shadow-sm">
+
+    <input type="hidden" asp-for="Id" />
+
+    <!-- TÊN + ĐỊA CHỈ -->
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Tên</label>
+            <input asp-for="Name" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Địa chỉ</label>
+            <input asp-for="Address" class="form-control" />
+        </div>
+    </div>
+
+    <!-- MÔ TẢ -->
+    <div class="mb-3">
+        <label class="form-label">Mô tả</label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+    </div>
+
+    <!-- LAT + LNG -->
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Latitude</label>
+            <input asp-for="Latitude" class="form-control" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Longitude</label>
+            <input asp-for="Longitude" class="form-control" />
+        </div>
+    </div>
+
+    <!-- IMAGE -->
+    <div class="mb-3">
+        <label class="form-label">Ảnh URL</label>
+        <input asp-for="ImageUrl" class="form-control" id="imgInput" />
+    </div>
+
+    <div class="mb-3">
+        <img id="previewImg"
+             src="@(string.IsNullOrEmpty(Model.ImageUrl) ? "" : "http://localhost:5137/images/" + Model.ImageUrl)"
+             style="max-width:200px; @(string.IsNullOrEmpty(Model.ImageUrl) ? "display:none;" : "")" />
+    </div>
+
+    <!-- TRẠNG THÁI -->
+    <div class="mb-3 form-check">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label class="form-check-label">Hoạt động</label>
+    </div>
+
+    <!-- BUTTON -->
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">💾 Lưu</button>
+        <a href="/Admin" class="btn btn-secondary">↩ Quay lại</a>
+    </div>
+
+</form>
+
+<script>
+    const input = document.getElementById("imgInput");
+    const img = document.getElementById("previewImg");
+
+    input.addEventListener("input", function () {
+        if (this.value) {
+            img.src = "http://localhost:5137/images/" + this.value;
+            img.style.display = "block";
+        } else {
+            img.style.display = "none";
+        }
+    });
+</script>

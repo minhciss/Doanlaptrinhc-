@@ -1,0 +1,88 @@
+﻿@model Poi
+@{
+    Layout = "~/Views/Shared/_PublicLayout.cshtml";
+    var list = ViewBag.Translations as List<PoiTranslation>;
+}
+
+<style>
+    .hero {
+        width: 100%;
+        height: 300px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+
+    .overlay {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        padding: 20px;
+        background: linear-gradient(transparent, rgba(0,0,0,0.9));
+    }
+
+    .content {
+        width: 100%;
+        padding: 20px;
+    }
+
+    h2 {
+        font-size: 24px;
+    }
+
+    p {
+        font-size: 14px;
+        color: #ccc;
+    }
+
+    .audio-box {
+        background: #111;
+        padding: 10px;
+        border-radius: 10px;
+        margin-top: 10px;
+    }
+</style>
+
+<!-- ẢNH -->
+<div class="hero" style="background-image:url('/images/@Model.ImageUrl')">
+    <div class="overlay">
+        <h2>@Model.Name</h2>
+        <p>📍 @Model.Address</p>
+    </div>
+</div>
+
+<!-- NỘI DUNG -->
+<div class="content">
+    <p>@Model.Description</p>
+
+    <h3>🎧 Nghe thuyết minh</h3>
+
+    <!-- CHỌN NGÔN NGỮ -->
+    <select id="langSelect" onchange="changeLang()">
+        @foreach (var item in list)
+        {
+            <option value="@item.AudioUrl">@item.LanguageCode</option>
+        }
+    </select>
+
+    <!-- AUDIO -->
+    <div class="audio-box">
+        <audio id="audioPlayer" controls autoplay style="width:100%">
+            <source src="@list[0].AudioUrl" type="audio/mpeg" />
+        </audio>
+    </div>
+</div>
+<a href="https://www.google.com/maps/search/?api=1&query=@Model.Address"
+       target="_blank"
+       style="color:yellow;">
+    📍 Xem trên Google Maps
+</a>
+<script>
+    function changeLang() {
+        var url = document.getElementById("langSelect").value;
+        var player = document.getElementById("audioPlayer");
+
+        player.src = url;
+        player.play();
+    }
+</script>

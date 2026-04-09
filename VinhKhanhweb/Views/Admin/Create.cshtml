@@ -1,0 +1,53 @@
+﻿@model Poi
+
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">➕ Thêm POI</h5>
+    </div>
+
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Name"></label>
+                    <input asp-for="Name" class="form-control" />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Address"></label>
+                    <input asp-for="Address" class="form-control" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description"></label>
+                <textarea asp-for="Description" class="form-control"></textarea>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Latitude"></label>
+                    <input asp-for="Latitude" class="form-control" />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Longitude"></label>
+                    <input asp-for="Longitude" class="form-control" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ImageUrl"></label>
+                <input asp-for="ImageUrl" class="form-control" />
+            </div>
+
+            <div class="form-check mb-3">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive"></label>
+            </div>
+
+            <button class="btn btn-success w-100">💾 Lưu</button>
+        </form>
+    </div>
+</div>
