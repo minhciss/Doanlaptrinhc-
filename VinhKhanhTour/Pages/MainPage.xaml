@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:VinhKhanhTour.Models"
+             xmlns:pageModels="clr-namespace:VinhKhanhTour.PageModels"
+             xmlns:local="clr-namespace:VinhKhanhTour.MarkupExtensions"
+             x:Class="VinhKhanhTour.Pages.MainPage"
+             Title="{local:Translate 'Khám phá Ẩm thực'}"
+             BackgroundColor="{AppThemeBinding Light={StaticResource LightBackground}, Dark={StaticResource DarkBackground}}">
+
+    <Grid>
+        <RefreshView Command="{Binding RefreshCommand}" IsRefreshing="{Binding IsRefreshing}">
+        <ScrollView>
+            <VerticalStackLayout Spacing="0">
+                
+                <!-- 🍊 Hero Banner with warm gradient -->
+                <Grid HeightRequest="{OnIdiom Phone=240, Tablet=320, Desktop=360}">
+                    <Image Source="vinh_khanh_food_street_banner.jpg" 
+                           Aspect="AspectFill" />
+                    <BoxView>
+                        <BoxView.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#20000000" Offset="0.0" />
+                                <GradientStop Color="#90000000" Offset="0.6" />
+                                <GradientStop Color="#DD000000" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </BoxView.Background>
+                    </BoxView>
+                    
+                    <VerticalStackLayout VerticalOptions="End" Padding="24,24,24,28">
+                        <Label Text="🦀" FontSize="36" Margin="0,0,0,4" />
+                        <Label Text="Vĩnh Khánh" FontSize="40" FontAttributes="Bold" TextColor="White" />
+                        <Label Text="{local:Translate 'Thiên đường Ốc Sài Gòn — Quận 4'}" FontSize="16" TextColor="#E0E0E0" Margin="0,4,0,0" />
+                    </VerticalStackLayout>
+                </Grid>
+
+                <VerticalStackLayout Padding="20,20,20,20" Spacing="16">
+                    
+                    <!-- 🔍 Search Bar -->
+                    <Border StrokeShape="RoundRectangle 24" 
+                            Padding="4,0" 
+                            StrokeThickness="1" 
+                            Stroke="{AppThemeBinding Light=#E8D5C8, Dark=#444444}"
+                            BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}">
+                        <Border.Shadow>
+                            <Shadow Brush="Black" Opacity="0.06" Offset="0,2" Radius="8" />
+                        </Border.Shadow>
+                        <SearchBar x:Name="PoiSearchBar" 
+                               Placeholder="{local:Translate 'Tìm quán ốc, lẩu, sushi...'}" 
+                               FontSize="14"
+                               TextColor="{AppThemeBinding Light={StaticResource DarkOnLightBackground}, Dark={StaticResource LightOnDarkBackground}}"
+                               BackgroundColor="Transparent"
+                               CancelButtonColor="{StaticResource Primary}"
+                               SearchCommand="{Binding SearchCommand}"
+                               SearchCommandParameter="{Binding Source={x:Reference PoiSearchBar}, Path=Text}"/>
+                    </Border>
+
+                    <!-- 🏷️ Filter Chips -->
+                    <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                        <HorizontalStackLayout Spacing="10">
+                            <Button Text="{local:Translate '🔥 Tất cả'}" 
+                                    Style="{StaticResource FilterButtonStyle}" 
+                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Tất cả'}"/>
+                            <Button Text="{local:Translate '🐚 Ốc &amp; Hải sản'}" 
+                                    Style="{StaticResource FilterButtonStyleSecondary}" 
+                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Ốc &amp; Hải sản'}"/>
+                            <Button Text="{local:Translate '🍖 Đồ nướng'}" 
+                                    Style="{StaticResource FilterButtonStyleSecondary}" 
+                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Đồ nướng'}"/>
+                            <Button Text="{local:Translate '🍜 Món nước'}" 
+                                    Style="{StaticResource FilterButtonStyleSecondary}" 
+                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Món nước'}"/>
+                            <Button Text="{local:Translate '🍣 Sushi'}" 
+                                    Style="{StaticResource FilterButtonStyleSecondary}" 
+                                    Command="{Binding FilterCommand}" CommandParameter="{local:Translate 'Sushi'}"/>
+                        </HorizontalStackLayout>
+                    </ScrollView>
+
+                    <!-- 🚀 Start Tour CTA Button -->
+                    <Border StrokeShape="RoundRectangle 28" StrokeThickness="0" Padding="0" HeightRequest="56">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#FF6B35" Offset="0.0" />
+                                <GradientStop Color="#FF8F5E" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Shadow>
+                            <Shadow Brush="#FF6B35" Opacity="0.3" Offset="0,6" Radius="16" />
+                        </Border.Shadow>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding StartTourCommand}" />
+                        </Border.GestureRecognizers>
+                        <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
+                            <Label Text="🗺️" FontSize="22" VerticalOptions="Center" />
+                            <Label Text="{local:Translate 'Bắt Đầu Tour Ngay'}" FontSize="18" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
+                            <Label Text="→" FontSize="22" TextColor="White" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <!-- 📍 Section Header -->
+                    <HorizontalStackLayout Spacing="8" Margin="0,8,0,0">
+                        <Label Text="📍" FontSize="22" VerticalOptions="Center" />
+                        <Label Text="{local:Translate 'Địa điểm nổi bật'}" FontSize="22" FontAttributes="Bold" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+
+                    <!-- 🃏 POI Cards -->
+                    <CollectionView x:Name="PoiCollectionView" ItemsSource="{Binding Pois}" SelectionMode="Single" SelectionChanged="OnPoiSelectionChanged">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Poi">
+                                <Border StrokeShape="RoundRectangle 16" 
+                                        StrokeThickness="0"
+                                        BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}"
+                                        Margin="0,0,0,16" 
+                                        Padding="0">
+                                    <Border.Shadow>
+                                        <Shadow Brush="Black" Opacity="0.1" Offset="0,4" Radius="12" />
+                                    </Border.Shadow>
+                                    <Grid RowDefinitions="Auto, Auto">
+                                        
+                                        <!-- Image -->
+                                            <Image Grid.Row="0"
+                                                  Source="{Binding DisplayImageSource}" 
+                                                   Aspect="AspectFill"
+                                                    HeightRequest="{OnIdiom Phone=180, Tablet=240, Desktop=280}"/>
+                                            <!-- Gradient Overlay -->
+                                        <BoxView Grid.Row="0"
+                                                 VerticalOptions="End"
+                                                 HeightRequest="{OnIdiom Phone=90, Tablet=120, Desktop=140}">
+                                            <BoxView.Background>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                    <GradientStop Color="Transparent" Offset="0.0" />
+                                                    <GradientStop Color="#CC000000" Offset="1.0" />
+                                                </LinearGradientBrush>
+                                            </BoxView.Background>
+                                        </BoxView>
+                                        
+                                        <Label Grid.Row="0" 
+                                               Text="{Binding DisplayName}" 
+                                               FontSize="{OnIdiom Phone=18, Tablet=22, Desktop=24}" 
+                                               FontAttributes="Bold" 
+                                               TextColor="White"
+                                               VerticalOptions="End"
+                                               Margin="16,16" />
+
+                                        <!-- Details -->
+                                        <VerticalStackLayout Grid.Row="1" Padding="16" Spacing="10">
+                                            <Label Text="{Binding DisplayDescription}" 
+                                                   FontSize="14" 
+                                                   MaxLines="2" 
+                                                   LineBreakMode="TailTruncation" 
+                                                   Opacity="0.8" />
+                                            
+                                            <FlexLayout Wrap="Wrap" Direction="Row">
+                                                <Border StrokeShape="RoundRectangle 10" 
+                                                        BackgroundColor="{AppThemeBinding Light=#FFF0E6, Dark=#2A1F16}" 
+                                                        StrokeThickness="0" 
+                                                        Padding="8,4" Margin="0,0,12,0">
+                                                    <Label Text="{Binding ListDisplayDistanceText}" 
+                                                           FontSize="12" 
+                                                           TextColor="{StaticResource Primary}" />
+                                                </Border>
+                                                <Border StrokeShape="RoundRectangle 10" 
+                                                        BackgroundColor="{AppThemeBinding Light=#E8F8F0, Dark=#162A1F}" 
+                                                        StrokeThickness="0" 
+                                                        Padding="8,4" Margin="0,0,12,0">
+                                                    <Label Text="{local:Translate '🐚 Ốc'}" 
+                                                           FontSize="12" 
+                                                           TextColor="{StaticResource AccentGreen}" />
+                                                </Border>
+                                            </FlexLayout>
+                                        </VerticalStackLayout>
+                                        
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                            
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+        </RefreshView>
+
+        <!-- The Detail Overlay (BottomSheet Template) -->
+        <Grid BackgroundColor="{AppThemeBinding Light=#80000000, Dark=#B3000000}" 
+              IsVisible="{Binding IsPoiDetailVisible}"
+              InputTransparent="False">
+            <Grid.GestureRecognizers>
+                <!-- Closes when tapping outside -->
+                <TapGestureRecognizer Command="{Binding ClosePoiDetailCommand}" />
+            </Grid.GestureRecognizers>
+
+            <Border VerticalOptions="End" Margin="0" Padding="0"
+                    StrokeShape="RoundRectangle 24,24,0,0" 
+                    BackgroundColor="{AppThemeBinding Light=White, Dark=#1E1E1E}"
+                    StrokeThickness="0"
+                    HeightRequest="{OnIdiom Phone=420, Tablet=500, Desktop=600}">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.2" Offset="0,-4" Radius="16" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <!-- Absorbs tap so it doesn't close when tapping the sheet -->
+                    <TapGestureRecognizer />
+                </Border.GestureRecognizers>
+                
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Header Image -->
+                    <Image Grid.Row="0"
+                           Source="{Binding SelectedPoi.ImageUrl}" 
+                           Aspect="AspectFill"
+                           HeightRequest="{OnIdiom Phone=160, Tablet=240, Desktop=300}"/>
+                    
+                    <BoxView Grid.Row="0" VerticalOptions="End" HeightRequest="{OnIdiom Phone=100, Tablet=140, Desktop=180}">
+                        <BoxView.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="Transparent" Offset="0.0" />
+                                <GradientStop Color="#E6000000" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </BoxView.Background>
+                    </BoxView>
+
+                    <!-- Close Button -->
+                    <Button Grid.Row="0" 
+                            Text="✕" 
+                            FontSize="18" 
+                            FontAttributes="Bold"
+                            BackgroundColor="#80000000" 
+                            TextColor="White"
+                            HeightRequest="36" 
+                            WidthRequest="36" 
+                            CornerRadius="18"
+                            Padding="0"
+                            HorizontalOptions="End" 
+                            VerticalOptions="Start" 
+                            Margin="16"
+                            Command="{Binding ClosePoiDetailCommand}"/>
+
+                    <!-- Name -->
+                    <Label Grid.Row="0" 
+                           Text="{Binding SelectedPoi.DisplayName}" 
+                           FontSize="24" 
+                           FontAttributes="Bold" 
+                           TextColor="White"
+                           VerticalOptions="End"
+                           Margin="24,16" 
+                           MaxLines="2" />
+
+                    <!-- Details -->
+                    <ScrollView Grid.Row="1">
+                        <VerticalStackLayout Padding="24" Spacing="16">
+                            <Label Text="{Binding SelectedPoi.DisplayDescription}" 
+                                   FontSize="16" 
+                                   LineHeight="1.4"
+                                   Opacity="0.8" />
+                            
+                            <FlexLayout Wrap="Wrap" Direction="Row" Margin="0,0,0,8">
+                                    <Border StrokeShape="RoundRectangle 10" 
+                                        BackgroundColor="{AppThemeBinding Light=#FFF0E6, Dark=#2A1F16}" 
+                                        StrokeThickness="0" 
+                                        Padding="12,6" Margin="0,0,12,8">
+                                    <Label Text="{Binding SelectedPoi.DisplayDistanceText}" 
+                                           FontSize="14" 
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Primary}" />
+                                </Border>
+                                <Border StrokeShape="RoundRectangle 10" 
+                                        BackgroundColor="{AppThemeBinding Light=#E8F8F0, Dark=#162A1F}" 
+                                        StrokeThickness="0" 
+                                        Padding="12,6" Margin="0,0,12,8">
+                                    <Label Text="{local:Translate '🐚 Ốc &amp; Hải sản'}" 
+                                           FontSize="14" 
+                                           TextColor="{StaticResource AccentGreen}" />
+                                </Border>
+                            </FlexLayout>
+                        </VerticalStackLayout>
+                    </ScrollView>
+
+                    <!-- Actions -->
+                    <Grid Grid.Row="2" ColumnDefinitions="*, *" ColumnSpacing="16" Margin="24,0,24,24">
+                        <!-- Play Narration Button -->
+                        <Border Grid.Column="0"
+                                StrokeShape="RoundRectangle 28" 
+                                StrokeThickness="0" 
+                                Padding="0" 
+                                HeightRequest="56">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#4A90E2" Offset="0.0" />
+                                    <GradientStop Color="#007AFF" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Shadow>
+                                <Shadow Brush="#007AFF" Opacity="0.3" Offset="0,6" Radius="16" />
+                            </Border.Shadow>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding PlayNarrationCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                                <Label Text="▶️" FontSize="18" VerticalOptions="Center" />
+                                <Label Text="{local:Translate 'Nghe Audio'}" FontSize="16" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+
+                        <!-- Navigate Button -->
+                        <Border Grid.Column="1"
+                                StrokeShape="RoundRectangle 28" 
+                                StrokeThickness="0" 
+                                Padding="0" 
+                                HeightRequest="56">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#FF6B35" Offset="0.0" />
+                                    <GradientStop Color="#FF8F5E" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Shadow>
+                                <Shadow Brush="#FF6B35" Opacity="0.3" Offset="0,6" Radius="16" />
+                            </Border.Shadow>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding NavigateToMapCommand}" />
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                                <Label Text="🗺️" FontSize="18" VerticalOptions="Center" />
+                                <Label Text="{local:Translate 'Bản đồ'}" FontSize="16" FontAttributes="Bold" TextColor="White" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</ContentPage>
